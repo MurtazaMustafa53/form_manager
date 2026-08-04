@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class PersonModel {
   final String id;
   final String name;
@@ -34,6 +36,16 @@ class PersonModel {
       its: map['its'] ?? 0,
       sfNo: map['sfNo'] ?? 0,
       completedFormCount: map['completedFormCount'] ?? 0,
+    );
+  }
+
+  factory PersonModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return PersonModel(
+      id: doc.id,
+      name: doc['name'] ?? "",
+      its: doc['its'] ?? 0,
+      sfNo: doc['sfNo'] ?? 0,
     );
   }
 }
