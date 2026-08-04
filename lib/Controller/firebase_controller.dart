@@ -27,16 +27,16 @@ class FirebaseController {
 
     final Map<String, dynamic> ans = formData.answers;
 
+    // Increment completedFormCount in Firestore using FieldValue.increment
     final Map<String, dynamic> personUpdates = {
-      'completedFormCount': 1,
+      'completedFormCount': FieldValue.increment(1),
       'fieldCompletionRatio': ans['completionRatio'] ?? 1.0,
       'name': (ans['name'] ?? '').toString().trim(),
       'contact': (ans['contact'] ?? '').toString().trim(),
       'address': (ans['address'] ?? '').toString().trim(),
       'houseType': (ans['houseType'] ?? '').toString().trim(),
-      'landlordNameAndContact': (ans['landlordContact'] ?? '')
-          .toString()
-          .trim(),
+      'landlordName': (ans['landlordName'] ?? '').toString().trim(),
+      'landlordContact': (ans['landlordContact'] ?? '').toString().trim(),
       'noOfPersons': int.tryParse((ans['noOfPersons'] ?? '0').toString()) ?? 0,
       'rooms': (ans['rooms'] ?? '').toString().trim(),
     };

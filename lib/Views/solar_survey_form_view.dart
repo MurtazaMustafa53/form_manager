@@ -6,8 +6,13 @@ import 'package:provider/provider.dart';
 
 class SolarSurveyFormView extends StatefulWidget {
   final PersonModel person;
+  final int formNumber;
 
-  const SolarSurveyFormView({super.key, required this.person});
+  const SolarSurveyFormView({
+    super.key,
+    required this.person,
+    this.formNumber = 1,
+  });
 
   @override
   State<SolarSurveyFormView> createState() => _SolarSurveyFormViewState();
@@ -16,17 +21,23 @@ class SolarSurveyFormView extends StatefulWidget {
 class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   final _formKey = GlobalKey<FormState>();
 
+  // General & Personal Controllers
   late TextEditingController _sfController;
   late TextEditingController _nameController;
   late TextEditingController _itsController;
   final _addressController = TextEditingController();
   final _contactController = TextEditingController();
   final _dateController = TextEditingController();
-  final _houseTypeController = TextEditingController();
-  final _landlordController = TextEditingController();
+
+  // House Type & Separated Landlord Details
+  String? _selectedHouseType;
+  final List<String> _houseTypeOptions = ['Ownership', 'Rented', 'Goodwill'];
+  final _landlordNameController = TextEditingController();
+  final _landlordContactController = TextEditingController();
   final _noOfPersonsController = TextEditingController();
   String? _selectedRoomType;
 
+  // System & Survey Details
   final _kwInstalledController = TextEditingController();
   final _panelsWattageController = TextEditingController();
   final _inverterCapacityController = TextEditingController();
@@ -37,40 +48,29 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   final _remarksController = TextEditingController();
   final _filledByController = TextEditingController();
 
-  final List<String> _roomOptions = [
-    '2Bed Lounge',
-    '2Bed D/D',
-    '3Bed Lounges',
-    '3Bed D/D',
-  ];
-
   final Map<String, int> _applianceWatts = {
-    'Fan': 100,
-    'Ac/Dc Fan': 45,
-    'Tube Light': 45,
-    'LED Tube Light': 50,
-    'LED Bulb': 15,
-    'Energy Saver': 28,
-    'LED TV': 80,
-    'Wifi Router': 12,
-    'AC 1-Ton-Inverter': 975,
-    'AC 1-1/2-Ton Inverter': 1950,
-    'AC 1-Ton-Standard': 1400,
-    'AC 1-1/2-Ton - Standard': 2050,
-    'Fridge': 250,
-    'Deep Freezer': 400,
-    'Dispanser': 200,
-    'Iron': 800,
-    'Microwave': 2250,
-    'Water Motor 1/2 HP': 450,
-    'Water Motor 1 HP': 900,
-    'Boring Pump 1 HP': 900,
-    'Boring Pump 2 HP': 2100,
-    'Washing Machine - Manual': 700,
-    'Washing Machine - Automatic': 700,
+    'Fan': 80,
+    'LED Bulb': 12,
+    'AC 1-Ton-Inverter': 1200,
+    'AC 1.5-Ton-Inverter': 1800,
+    'AC 2-Ton-Inverter': 2400,
+    'Fridge Normal': 300,
+    'Fridge Inverter': 150,
+    'Deep Freezer Normal': 350,
+    'Deep Freezer Inverter': 200,
+    'Water Pump (1/2 HP)': 400,
+    'Water Pump (1 HP)': 750,
+    'Washing Machine': 500,
+    'Iron': 1000,
+    'Microwave': 1200,
+    'TV': 100,
   };
 
   final Map<String, TextEditingController> _qtyControllers = {};
+
+  bool _isLoading = false;
+  double _completionRatio = 0.0;
+  int _totalWatts = 0;
 
   @override
   void initState() {
@@ -82,26 +82,60 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
 
     for (var key in _applianceWatts.keys) {
       _qtyControllers[key] = TextEditingController(text: '0');
+      _qtyControllers[key]!.addListener(_calculateTotalWatts);
     }
+
+    _sfController.addListener(_calculateCompletionRatio);
+    _nameController.addListener(_calculateCompletionRatio);
+    _itsController.addListener(_calculateCompletionRatio);
+    _addressController.addListener(_calculateCompletionRatio);
+    _contactController.addListener(_calculateCompletionRatio);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadFormData();
     });
   }
 
+  @override
+  void dispose() {
+    _sfController.dispose();
+    _nameController.dispose();
+    _itsController.dispose();
+    _addressController.dispose();
+    _contactController.dispose();
+    _dateController.dispose();
+    _landlordNameController.dispose();
+    _landlordContactController.dispose();
+    _noOfPersonsController.dispose();
+    _kwInstalledController.dispose();
+    _panelsWattageController.dispose();
+    _inverterCapacityController.dispose();
+    _batteryTypeController.dispose();
+    _normalUpsController.dispose();
+    _existingInverterController.dispose();
+    _existingBatteryController.dispose();
+    _remarksController.dispose();
+    _filledByController.dispose();
+    for (var controller in _qtyControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _loadFormData() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
 
-    // 1. Try fetching already submitted form from Firebase
-    final submittedForm = await provider.getSubmittedForm(widget.person.id, 1);
+    final submittedForm = await provider.getSubmittedForm(
+      widget.person.id,
+      widget.formNumber,
+    );
 
     if (submittedForm != null) {
       _populateFieldsFromMap(submittedForm.answers);
       return;
     }
 
-    // 2. If not submitted, fall back to loading local draft
-    final draft = provider.loadDraft(widget.person.id, 1);
+    final draft = provider.loadDraft(widget.person.id, widget.formNumber);
     if (draft != null) {
       _populateFieldsFromMap(draft.answers);
     }
@@ -115,8 +149,15 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
       _addressController.text = ans['address'] ?? '';
       _contactController.text = ans['contact'] ?? '';
       _dateController.text = ans['date'] ?? _dateController.text;
-      _houseTypeController.text = ans['houseType'] ?? '';
-      _landlordController.text = ans['landlordContact'] ?? '';
+
+      final loadedHouseType = ans['houseType']?.toString();
+      _selectedHouseType = (_houseTypeOptions.contains(loadedHouseType))
+          ? loadedHouseType
+          : null;
+
+      _landlordNameController.text =
+          ans['landlordName'] ?? ans['landlordNameAndContact'] ?? '';
+      _landlordContactController.text = ans['landlordContact'] ?? '';
       _noOfPersonsController.text = ans['noOfPersons']?.toString() ?? '';
       _selectedRoomType =
           (ans['rooms'] != null && ans['rooms'].toString().isNotEmpty)
@@ -132,76 +173,53 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
       _remarksController.text = ans['remarks'] ?? '';
       _filledByController.text = ans['filledBy'] ?? '';
 
-      _applianceWatts.keys.forEach((item) {
+      for (var item in _applianceWatts.keys) {
         if (ans.containsKey('qty_$item')) {
           _qtyControllers[item]?.text = ans['qty_$item'].toString();
         }
-      });
+      }
     });
+    _calculateTotalWatts();
+    _calculateCompletionRatio();
   }
 
-  void _onFieldChanged() {
-    setState(() {});
-    _saveDraftLocally();
-  }
-
-  void _saveDraftLocally() {
-    final Map<String, dynamic> answers = _buildAnswersMap();
-    final formData = FormDataModel(
-      id: '${widget.person.id}_form_1',
-      personId: widget.person.id,
-      formNumber: 1,
-      filledByStaffId: _filledByController.text,
-      answers: answers,
-      isDraft: true,
-      updatedAt: DateTime.now(),
-    );
-
-    Provider.of<AppProvider>(context, listen: false).saveDraft(formData);
-  }
-
-  double _calculateProfileCompletionPercentage() {
-    int totalFields = 11;
-    int filledCount = 0;
-
-    if (_sfController.text.trim().isNotEmpty) filledCount++;
-    if (_nameController.text.trim().isNotEmpty) filledCount++;
-    if (_itsController.text.trim().isNotEmpty) filledCount++;
-    if (_addressController.text.trim().isNotEmpty) filledCount++;
-    if (_contactController.text.trim().isNotEmpty) filledCount++;
-    if (_houseTypeController.text.trim().isNotEmpty) filledCount++;
-    if (_landlordController.text.trim().isNotEmpty) filledCount++;
-    if (_noOfPersonsController.text.trim().isNotEmpty) filledCount++;
-    if (_selectedRoomType != null && _selectedRoomType!.isNotEmpty)
-      filledCount++;
-    if (_remarksController.text.trim().isNotEmpty) filledCount++;
-    if (_filledByController.text.trim().isNotEmpty) filledCount++;
-
-    return (filledCount / totalFields).clamp(0.0, 1.0);
-  }
-
-  int _calculateTotalWatts() {
-    int total = 0;
-    _applianceWatts.forEach((item, watts) {
-      int qty = int.tryParse(_qtyControllers[item]?.text ?? '0') ?? 0;
-      total += qty * watts;
+  void _calculateTotalWatts() {
+    int watts = 0;
+    _qtyControllers.forEach((key, controller) {
+      final qty = int.tryParse(controller.text) ?? 0;
+      watts += qty * (_applianceWatts[key] ?? 0);
     });
-    return total;
+    setState(() => _totalWatts = watts);
+  }
+
+  void _calculateCompletionRatio() {
+    int totalFields = 5;
+    int filledFields = 0;
+
+    if (_nameController.text.trim().isNotEmpty) filledFields++;
+    if (_itsController.text.trim().isNotEmpty) filledFields++;
+    if (_sfController.text.trim().isNotEmpty) filledFields++;
+    if (_contactController.text.trim().isNotEmpty) filledFields++;
+    if (_addressController.text.trim().isNotEmpty) filledFields++;
+
+    setState(() {
+      _completionRatio = filledFields / totalFields;
+    });
   }
 
   Map<String, dynamic> _buildAnswersMap() {
-    final Map<String, dynamic> answers = {
+    final Map<String, dynamic> map = {
       'sfNo': _sfController.text,
       'name': _nameController.text,
       'its': _itsController.text,
       'address': _addressController.text,
       'contact': _contactController.text,
       'date': _dateController.text,
-      'houseType': _houseTypeController.text,
-      'landlordContact': _landlordController.text,
+      'houseType': _selectedHouseType ?? '',
+      'landlordName': _landlordNameController.text,
+      'landlordContact': _landlordContactController.text,
       'noOfPersons': _noOfPersonsController.text,
       'rooms': _selectedRoomType ?? '',
-      'totalWatts': _calculateTotalWatts(),
       'kwInstalled': _kwInstalledController.text,
       'panelsWattage': _panelsWattageController.text,
       'inverterCapacity': _inverterCapacityController.text,
@@ -211,314 +229,382 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
       'existingBattery': _existingBatteryController.text,
       'remarks': _remarksController.text,
       'filledBy': _filledByController.text,
-      'completionRatio': _calculateProfileCompletionPercentage(),
+      'totalWatts': _totalWatts,
+      'completionRatio': _completionRatio,
     };
 
-    _qtyControllers.forEach((item, controller) {
-      answers['qty_$item'] = int.tryParse(controller.text) ?? 0;
+    _qtyControllers.forEach((key, controller) {
+      map['qty_$key'] = int.tryParse(controller.text) ?? 0;
     });
 
-    return answers;
+    return map;
   }
 
-  void _submitForm() {
-    if (_formKey.currentState!.validate()) {
-      final formData = FormDataModel(
-        id: '${widget.person.id}_form_1',
-        personId: widget.person.id,
-        formNumber: 1,
-        filledByStaffId: _filledByController.text,
-        answers: _buildAnswersMap(),
-        isDraft: false,
-        updatedAt: DateTime.now(),
-      );
+  void _saveDraft() {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final formData = FormDataModel(
+      id: '${widget.person.id}_form_${widget.formNumber}',
+      personId: widget.person.id,
+      formNumber: widget.formNumber,
+      filledByStaffId: _filledByController.text,
+      isDraft: true,
+      updatedAt: DateTime.now(),
+      answers: _buildAnswersMap(),
+    );
 
-      Provider.of<AppProvider>(
-        context,
-        listen: false,
-      ).submitFormToFirebase(formData);
+    provider.saveDraft(formData);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Form ${widget.formNumber} draft saved!')),
+    );
+  }
+
+  Future<void> _submitForm() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    final formData = FormDataModel(
+      id: '${widget.person.id}_form_${widget.formNumber}',
+      personId: widget.person.id,
+      formNumber: widget.formNumber,
+      filledByStaffId: _filledByController.text,
+      isDraft: false,
+      updatedAt: DateTime.now(),
+      answers: _buildAnswersMap(),
+    );
+
+    await provider.submitFormToFirebase(formData);
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Form ${widget.formNumber} submitted successfully to Firebase!',
+          ),
+        ),
+      );
       Navigator.pop(context);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final completionRatio = _calculateProfileCompletionPercentage();
-    final percentageInt = (completionRatio * 100).toInt();
+    final provider = Provider.of<AppProvider>(context);
+    final bool isReadOnly = provider.isViewer;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text('IBM Solar Survey - ${widget.person.name}'),
+        title: Text('${widget.person.name} - Form ${widget.formNumber}'),
         backgroundColor: const Color(0xFF1E293B),
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Card(
-                color: const Color(0xFFEFF6FF),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  side: const BorderSide(color: Color(0xFFBFDBFE)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Profile Form Completion',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E40AF),
-                            ),
-                          ),
-                          Text(
-                            '$percentageInt%',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E40AF),
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Card(
+                      elevation: 0,
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.grey.shade300),
                       ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: completionRatio,
-                          minHeight: 8,
-                          backgroundColor: const Color(0xFFDBEAFE),
-                          color: const Color(0xFF2563EB),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              const Text(
-                'IBM Solar Data Collection 2026/1448H',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2563EB),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _buildInput('SF No', _sfController, width: 160),
-                  _buildInput('Name', _nameController, width: 250),
-                  _buildInput('ITS', _itsController, width: 160),
-                  _buildInput('Contact', _contactController, width: 200),
-                  _buildInput('Date', _dateController, width: 160),
-                  _buildInput('Address', _addressController, width: 430),
-                  _buildInput('House Type', _houseTypeController, width: 200),
-                  _buildInput(
-                    'Landlord Name & Contact#',
-                    _landlordController,
-                    width: 250,
-                  ),
-                  _buildInput(
-                    'No. of Persons',
-                    _noOfPersonsController,
-                    width: 160,
-                    isNumber: true,
-                  ),
-                  SizedBox(
-                    width: 200,
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _selectedRoomType,
-                      decoration: const InputDecoration(
-                        labelText: 'Rooms',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: _roomOptions.map((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        _selectedRoomType = val;
-                        _onFieldChanged();
-                      },
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Appliance Details',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    'Total Watts: ${_calculateTotalWatts()} W',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF10B981),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              Card(
-                elevation: 0,
-                // side: BorderSide(color: Colors.grey.shade300),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    children: _applianceWatts.keys.map((item) {
-                      final watts = _applianceWatts[item]!;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
                         child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Expanded(
-                              child: Text(
-                                item,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isReadOnly
+                                      ? 'Form Status: Read Only'
+                                      : 'Form ${widget.formNumber} Status',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Calculated Watts: $_totalWatts W',
+                                  style: const TextStyle(
+                                    color: Color(0xFF2563EB),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                            Text('Avg. $watts W'),
-                            const SizedBox(width: 24),
-                            SizedBox(
-                              width: 80,
-                              child: TextFormField(
-                                controller: _qtyControllers[item],
-                                keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Qty',
-                                  isDense: true,
-                                  border: OutlineInputBorder(),
-                                ),
-                                onChanged: (_) => _onFieldChanged(),
+                            Text(
+                              '${(_completionRatio * 100).toInt()}%',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF10B981),
                               ),
                             ),
                           ],
                         ),
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('1. Personal Profile Details'),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildTextField(
+                          _nameController,
+                          'Full Name',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _itsController,
+                          'ITS Number',
+                          isNumeric: true,
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _sfController,
+                          'SF Number',
+                          isNumeric: true,
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _contactController,
+                          'Contact Number',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _addressController,
+                          'Address',
+                          enabled: !isReadOnly,
+                        ),
+
+                        // House Type Dropdown
+                        SizedBox(
+                          width: 260,
+                          child: DropdownButtonFormField<String>(
+                            value: _selectedHouseType,
+                            decoration: InputDecoration(
+                              labelText: 'House Type',
+                              filled: true,
+                              fillColor: !isReadOnly
+                                  ? Colors.white
+                                  : Colors.grey.shade100,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            items: _houseTypeOptions.map((type) {
+                              return DropdownMenuItem(
+                                value: type,
+                                child: Text(type),
+                              );
+                            }).toList(),
+                            onChanged: !isReadOnly
+                                ? (value) =>
+                                      setState(() => _selectedHouseType = value)
+                                : null,
+                          ),
+                        ),
+
+                        // Separated Landlord Fields
+                        _buildTextField(
+                          _landlordNameController,
+                          'Landlord Name',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _landlordContactController,
+                          'Landlord Contact',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _noOfPersonsController,
+                          'No. of Persons',
+                          isNumeric: true,
+                          enabled: !isReadOnly,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('2. Electrical Appliances Load'),
+                    const SizedBox(height: 12),
+                    Card(
+                      elevation: 0,
+                      color: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: _applianceWatts.keys.map((item) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8.0,
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text('$item (${_applianceWatts[item]}W)'),
+                                  SizedBox(
+                                    width: 80,
+                                    child: TextField(
+                                      controller: _qtyControllers[item],
+                                      keyboardType: TextInputType.number,
+                                      enabled: !isReadOnly,
+                                      decoration: const InputDecoration(
+                                        isDense: true,
+                                        border: OutlineInputBorder(),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildSectionHeader('3. Existing Solar / Backup System'),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        _buildTextField(
+                          _kwInstalledController,
+                          'KW Installed',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _panelsWattageController,
+                          'Panels Wattage',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _inverterCapacityController,
+                          'Inverter Capacity',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _batteryTypeController,
+                          'Battery Type',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _normalUpsController,
+                          'Normal UPS Installed',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _existingInverterController,
+                          'Existing Inverter',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _existingBatteryController,
+                          'Existing Battery',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _filledByController,
+                          'Filled By Staff Name',
+                          enabled: !isReadOnly,
+                        ),
+                        _buildTextField(
+                          _remarksController,
+                          'Remarks',
+                          enabled: !isReadOnly,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    if (!isReadOnly)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                              ),
+                              onPressed: _saveDraft,
+                              child: const Text('Save Local Draft'),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2563EB),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                              ),
+                              onPressed: _submitForm,
+                              child: const Text('Submit Form'),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
+            ),
+    );
+  }
 
-              const Text(
-                'Already Installed Solar System / UPS',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _buildInput(
-                    'How many kW installed',
-                    _kwInstalledController,
-                    width: 220,
-                  ),
-                  _buildInput(
-                    'No. of panels/Wattage',
-                    _panelsWattageController,
-                    width: 220,
-                  ),
-                  _buildInput(
-                    'Inverter capacity',
-                    _inverterCapacityController,
-                    width: 220,
-                  ),
-                  _buildInput(
-                    'Battery type / Ampere',
-                    _batteryTypeController,
-                    width: 220,
-                  ),
-                  _buildInput(
-                    'Normal UPS installed',
-                    _normalUpsController,
-                    width: 220,
-                  ),
-                  _buildInput(
-                    'Inverter',
-                    _existingInverterController,
-                    width: 220,
-                  ),
-                  _buildInput(
-                    'Battery/Type/Ampere',
-                    _existingBatteryController,
-                    width: 220,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildInput(
-                'Remarks',
-                _remarksController,
-                width: double.infinity,
-              ),
-              const SizedBox(height: 16),
-              _buildInput('Form filled by', _filledByController, width: 300),
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _submitForm,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2563EB),
-                  ),
-                  child: const Text(
-                    'Submit Solar Survey Form',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        color: Color(0xFF1E293B),
       ),
     );
   }
 
-  Widget _buildInput(
-    String label,
-    TextEditingController controller, {
-    required double width,
-    bool isNumber = false,
+  Widget _buildTextField(
+    TextEditingController controller,
+    String label, {
+    bool isNumeric = false,
+    bool enabled = true,
   }) {
     return SizedBox(
-      width: width,
+      width: 260,
       child: TextFormField(
         controller: controller,
-        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+        enabled: enabled,
         decoration: InputDecoration(
           labelText: label,
-          border: const OutlineInputBorder(),
-          isDense: true,
+          filled: true,
+          fillColor: enabled ? Colors.white : Colors.grey.shade100,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        onChanged: (_) => _onFieldChanged(),
       ),
     );
   }

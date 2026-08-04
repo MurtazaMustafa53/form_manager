@@ -29,9 +29,30 @@ class PersonModel {
     this.fieldCompletionRatio = 0.0,
   });
 
-  bool get isComplete => completedFormCount >= 1;
+  // Complete only when all 6 forms are submitted
+  bool get isComplete => completedFormCount >= 6;
 
-  double get progressPercentage => isComplete ? 1.0 : fieldCompletionRatio;
+  // Overall progress ratio across 6 forms (e.g., 3 forms completed = 50%)
+  double get progressPercentage {
+    if (isComplete) return 1.0;
+    return (completedFormCount / 6.0).clamp(0.0, 1.0);
+  }
+
+  static int _parseInt(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
+  }
+
+  static double _parseDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value) ?? 0.0;
+    return 0.0;
+  }
 
   Map<String, dynamic> toMap() {
     return {
@@ -52,18 +73,18 @@ class PersonModel {
 
   factory PersonModel.fromMap(Map<String, dynamic> map) {
     return PersonModel(
-      id: map['id'] ?? '',
-      name: map['name'] ?? '',
-      its: map['its'] ?? 0,
-      sfNo: map['sfNo'] ?? 0,
-      contact: map['contact'] ?? '',
-      address: map['address'] ?? '',
-      houseType: map['houseType'] ?? '',
-      landlordNameAndContact: map['landlordNameAndContact'] ?? '',
-      noOfPersons: map['noOfPersons'] ?? 0,
-      rooms: map['rooms'] ?? '',
-      completedFormCount: map['completedFormCount'] ?? 0,
-      fieldCompletionRatio: (map['fieldCompletionRatio'] ?? 0.0).toDouble(),
+      id: map['id']?.toString() ?? '',
+      name: map['name']?.toString() ?? '',
+      its: _parseInt(map['its']),
+      sfNo: _parseInt(map['sfNo']),
+      contact: map['contact']?.toString() ?? '',
+      address: map['address']?.toString() ?? '',
+      houseType: map['houseType']?.toString() ?? '',
+      landlordNameAndContact: map['landlordNameAndContact']?.toString() ?? '',
+      noOfPersons: _parseInt(map['noOfPersons']),
+      rooms: map['rooms']?.toString() ?? '',
+      completedFormCount: _parseInt(map['completedFormCount']),
+      fieldCompletionRatio: _parseDouble(map['fieldCompletionRatio']),
     );
   }
 
@@ -71,17 +92,17 @@ class PersonModel {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return PersonModel(
       id: doc.id,
-      name: data['name'] ?? "",
-      its: data['its'] ?? 0,
-      sfNo: data['sfNo'] ?? 0,
-      contact: data['contact'] ?? '',
-      address: data['address'] ?? '',
-      houseType: data['houseType'] ?? '',
-      landlordNameAndContact: data['landlordNameAndContact'] ?? '',
-      noOfPersons: data['noOfPersons'] ?? 0,
-      rooms: data['rooms'] ?? '',
-      completedFormCount: data['completedFormCount'] ?? 0,
-      fieldCompletionRatio: (data['fieldCompletionRatio'] ?? 0.0).toDouble(),
+      name: data['name']?.toString() ?? '',
+      its: _parseInt(data['its']),
+      sfNo: _parseInt(data['sfNo']),
+      contact: data['contact']?.toString() ?? '',
+      address: data['address']?.toString() ?? '',
+      houseType: data['houseType']?.toString() ?? '',
+      landlordNameAndContact: data['landlordNameAndContact']?.toString() ?? '',
+      noOfPersons: _parseInt(data['noOfPersons']),
+      rooms: data['rooms']?.toString() ?? '',
+      completedFormCount: _parseInt(data['completedFormCount']),
+      fieldCompletionRatio: _parseDouble(data['fieldCompletionRatio']),
     );
   }
 }

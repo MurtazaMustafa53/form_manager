@@ -1,11 +1,88 @@
 import 'package:flutter/material.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/person_model.dart';
+import 'package:form_manager/Views/login_view.dart';
 import 'package:form_manager/Views/solar_survey_form_view.dart';
 import 'package:provider/provider.dart';
 
-class DashboardView extends StatelessWidget {
+class DashboardView extends StatefulWidget {
   const DashboardView({super.key});
+
+  @override
+  State<DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<DashboardView> {
+  final TextEditingController _searchController = TextEditingController();
+  String _selectedStatusFilter = 'All';
+
+  // Sorting State
+  int _sortColumnIndex = 1;
+  bool _isAscending = true;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<PersonModel> _getFilteredAndSortedPeople(List<PersonModel> people) {
+    final query = _searchController.text.trim().toLowerCase();
+
+    // 1. Filter
+    final filtered = people.where((person) {
+      final matchesName = person.name.toLowerCase().contains(query);
+      final matchesIts = person.its.toString().contains(query);
+      final matchesSf = person.sfNo.toString().contains(query);
+      final matchesSearch =
+          query.isEmpty || matchesName || matchesIts || matchesSf;
+
+      bool matchesStatus = true;
+      if (_selectedStatusFilter == 'Pending') {
+        matchesStatus = !person.isComplete;
+      } else if (_selectedStatusFilter == 'Submitted') {
+        matchesStatus = person.isComplete;
+      }
+
+      return matchesSearch && matchesStatus;
+    }).toList();
+
+    // 2. Sort
+    filtered.sort((a, b) {
+      int comparison = 0;
+
+      switch (_sortColumnIndex) {
+        case 0: // Status
+          comparison = (a.isComplete ? 1 : 0).compareTo(b.isComplete ? 1 : 0);
+          break;
+        case 1: // Name
+          comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+          break;
+        case 2: // ITS
+          comparison = a.its.compareTo(b.its);
+          break;
+        case 3: // SF No
+          comparison = a.sfNo.compareTo(b.sfNo);
+          break;
+        case 4: // Form Progress
+          comparison = a.progressPercentage.compareTo(b.progressPercentage);
+          break;
+        default:
+          comparison = 0;
+      }
+
+      return _isAscending ? comparison : -comparison;
+    });
+
+    return filtered;
+  }
+
+  void _onSort(int columnIndex, bool ascending) {
+    setState(() {
+      _sortColumnIndex = columnIndex;
+      _isAscending = ascending;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +92,23 @@ class DashboardView extends StatelessWidget {
         title: const Text('IBM Solar Survey Dashboard'),
         backgroundColor: const Color(0xFF1E293B),
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Logout',
+            onPressed: () async {
+              final provider = Provider.of<AppProvider>(context, listen: false);
+              await provider.logout();
+              if (context.mounted) {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoginView()),
+                  (route) => false,
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: Consumer<AppProvider>(
         builder: (context, provider, child) {
@@ -30,11 +124,14 @@ class DashboardView extends StatelessWidget {
               : 0.0;
           final pendingCount = people.where((p) => !p.isComplete).length;
 
+          final displayedPeople = _getFilteredAndSortedPeople(people);
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Stat Cards
                 Wrap(
                   spacing: 16,
                   runSpacing: 16,
@@ -69,6 +166,7 @@ class DashboardView extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // Progress Bar Card
                 Card(
                   elevation: 0,
                   color: Colors.white,
@@ -144,6 +242,7 @@ class DashboardView extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // Data Table with Search, Filter & Column Sorting
                 Card(
                   elevation: 0,
                   color: Colors.white,
@@ -156,21 +255,113 @@ class DashboardView extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Client Survey List',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF1E293B),
-                          ),
+                        Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          // cross: WrapCrossAlignment.center,
+                          spacing: 16,
+                          runSpacing: 12,
+                          children: [
+                            const Text(
+                              'Client Survey List',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 240,
+                                  child: TextField(
+                                    controller: _searchController,
+                                    decoration: InputDecoration(
+                                      hintText: 'Search Name, ITS, SF...',
+                                      prefixIcon: const Icon(
+                                        Icons.search,
+                                        size: 20,
+                                      ),
+                                      suffixIcon:
+                                          _searchController.text.isNotEmpty
+                                          ? IconButton(
+                                              icon: const Icon(
+                                                Icons.clear,
+                                                size: 18,
+                                              ),
+                                              onPressed: () {
+                                                _searchController.clear();
+                                                setState(() {});
+                                              },
+                                            )
+                                          : null,
+                                      isDense: true,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 10,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    onChanged: (_) => setState(() {}),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                      color: Colors.grey.shade400,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _selectedStatusFilter,
+                                      isDense: true,
+                                      items: const [
+                                        DropdownMenuItem(
+                                          value: 'All',
+                                          child: Text('All Status'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'Pending',
+                                          child: Text('Pending'),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 'Submitted',
+                                          child: Text('Submitted'),
+                                        ),
+                                      ],
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _selectedStatusFilter = value;
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
-                        if (people.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 32.0),
+
+                        if (displayedPeople.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 32.0),
                             child: Center(
                               child: Text(
-                                'No profiles loaded from Firebase yet.',
+                                people.isEmpty
+                                    ? 'No profiles loaded from Firebase yet.'
+                                    : 'No profiles match your search criteria.',
+                                style: const TextStyle(color: Colors.grey),
                               ),
                             ),
                           )
@@ -180,17 +371,36 @@ class DashboardView extends StatelessWidget {
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: DataTable(
+                                sortColumnIndex: _sortColumnIndex,
+                                sortAscending: _isAscending,
                                 horizontalMargin: 12,
                                 columnSpacing: 28,
-                                columns: const [
-                                  DataColumn(label: Text('Status')),
-                                  DataColumn(label: Text('Name')),
-                                  DataColumn(label: Text('ITS')),
-                                  DataColumn(label: Text('SF No')),
-                                  DataColumn(label: Text('Form Progress')),
-                                  DataColumn(label: Text('Action')),
+                                columns: [
+                                  DataColumn(
+                                    label: const Text('Status'),
+                                    onSort: _onSort,
+                                  ),
+                                  DataColumn(
+                                    label: const Text('Name'),
+                                    onSort: _onSort,
+                                  ),
+                                  DataColumn(
+                                    label: const Text('ITS'),
+                                    numeric: true,
+                                    onSort: _onSort,
+                                  ),
+                                  DataColumn(
+                                    label: const Text('SF No'),
+                                    numeric: true,
+                                    onSort: _onSort,
+                                  ),
+                                  DataColumn(
+                                    label: const Text('Form Progress'),
+                                    onSort: _onSort,
+                                  ),
+                                  const DataColumn(label: Text('Action')),
                                 ],
-                                rows: people
+                                rows: displayedPeople
                                     .map(
                                       (person) =>
                                           _buildTableRow(context, person),
@@ -271,8 +481,14 @@ class DashboardView extends StatelessWidget {
   }
 
   DataRow _buildTableRow(BuildContext context, PersonModel person) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final bool isViewer = provider.isViewer;
     final bool isComplete = person.isComplete;
     final int percentage = (person.progressPercentage * 100).toInt();
+
+    final String buttonText = isViewer
+        ? 'View Form'
+        : (isComplete ? 'View Form' : 'Fill Form');
 
     return DataRow(
       cells: [
@@ -348,17 +564,87 @@ class DashboardView extends StatelessWidget {
               elevation: 0,
             ),
             onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SolarSurveyFormView(person: person),
-                ),
-              );
+              _showFormSelectionDialog(context, person);
             },
-            child: Text(isComplete ? 'View Form' : 'Fill Form'),
+            child: Text(buttonText),
           ),
         ),
       ],
+    );
+  }
+
+  void _showFormSelectionDialog(BuildContext context, PersonModel person) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Select Form for ${person.name}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Completed ${person.completedFormCount} of 6 forms (Only Form 1 Available)',
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+              const SizedBox(height: 20),
+              GridView.builder(
+                shrinkWrap: true,
+                itemCount: 6,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                  childAspectRatio: 2.2,
+                ),
+                itemBuilder: (context, index) {
+                  final formNum = index + 1;
+                  final bool isFormOne = formNum == 1;
+
+                  return ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isFormOne
+                          ? const Color(0xFF2563EB)
+                          : Colors.grey.shade300,
+                      foregroundColor: isFormOne
+                          ? Colors.white
+                          : Colors.grey.shade600,
+                      elevation: isFormOne ? 2 : 0,
+                    ),
+                    // Passing null to onPressed grays out and disables interaction for forms 2-6
+                    onPressed: isFormOne
+                        ? () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SolarSurveyFormView(
+                                  person: person,
+                                  formNumber: formNum,
+                                ),
+                              ),
+                            );
+                          }
+                        : null,
+                    child: Text('Form $formNum'),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

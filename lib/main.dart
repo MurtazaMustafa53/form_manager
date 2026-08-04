@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:form_manager/Controller/local_storage_controller.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Views/dashboard_view.dart';
+import 'package:form_manager/Views/login_view.dart';
 import 'package:form_manager/firebase_options.dart';
 import 'package:provider/provider.dart';
 
@@ -26,13 +27,17 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Forms Manager',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-      ),
-      home: const DashboardView(),
+    return Consumer<AppProvider>(
+      builder: (context, provider, _) {
+        return MaterialApp(
+          title: 'Forms Manager',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+          ),
+          home: const LoginView(),
+        );
+      },
     );
   }
 }
