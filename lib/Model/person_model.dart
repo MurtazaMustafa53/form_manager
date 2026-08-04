@@ -2,12 +2,14 @@ class PersonModel {
   final String id;
   final String name;
   final int its;
+  final int sfNo;
   int completedFormCount;
 
   PersonModel({
     required this.id,
     required this.name,
     required this.its,
+    required this.sfNo,
     this.completedFormCount = 0,
   });
 
@@ -20,6 +22,7 @@ class PersonModel {
       'id': id,
       'name': name,
       'its': its,
+      'sfNo': sfNo,
       'completedFormCount': completedFormCount,
     };
   }
@@ -29,6 +32,7 @@ class PersonModel {
       id: map['id'] ?? '',
       name: map['name'] ?? '',
       its: map['its'] ?? 0,
+      sfNo: map['sfNo'] ?? 0,
       completedFormCount: map['completedFormCount'] ?? 0,
     );
   }

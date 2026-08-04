@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "844208962173",
+    "project_id": "form-management-ibm",
+    "storage_bucket": "form-management-ibm.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:844208962173:android:76a6a4cc1264c02de5cf14",
+        "android_client_info": {
+          "package_name": "com.example.form_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDbf5oOwx5xLYSqY2INggnZkC3UrwDJ5Vs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
