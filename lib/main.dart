@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:form_manager/Controller/local_storage_controller.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
-import 'package:form_manager/Views/dashboard_view.dart';
 import 'package:form_manager/Views/login_view.dart';
 import 'package:form_manager/firebase_options.dart';
 import 'package:provider/provider.dart';
