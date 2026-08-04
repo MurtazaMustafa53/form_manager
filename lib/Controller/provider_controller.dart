@@ -34,6 +34,13 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<FormDataModel?> getSubmittedForm(
+    String personId,
+    int formNumber,
+  ) async {
+    return await _firebaseController.getSubmittedForm(personId, formNumber);
+  }
+
   FormDataModel? loadDraft(String personId, int formNumber) {
     return LocalStorageController.getFormDraft(personId, formNumber);
   }

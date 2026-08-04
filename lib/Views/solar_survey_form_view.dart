@@ -85,41 +85,59 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDraftData();
+      _loadFormData();
     });
   }
 
-  void _loadDraftData() {
+  Future<void> _loadFormData() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    final draft = provider.loadDraft(widget.person.id, 1);
 
-    if (draft != null) {
-      final ans = draft.answers;
-      setState(() {
-        _addressController.text = ans['address'] ?? '';
-        _contactController.text = ans['contact'] ?? '';
-        _dateController.text = ans['date'] ?? _dateController.text;
-        _houseTypeController.text = ans['houseType'] ?? '';
-        _landlordController.text = ans['landlordContact'] ?? '';
-        _noOfPersonsController.text = ans['noOfPersons'] ?? '';
-        _selectedRoomType = ans['rooms']?.isEmpty ?? true ? null : ans['rooms'];
-        _kwInstalledController.text = ans['kwInstalled'] ?? '';
-        _panelsWattageController.text = ans['panelsWattage'] ?? '';
-        _inverterCapacityController.text = ans['inverterCapacity'] ?? '';
-        _batteryTypeController.text = ans['batteryType'] ?? '';
-        _normalUpsController.text = ans['normalUpsInstalled'] ?? '';
-        _existingInverterController.text = ans['existingInverter'] ?? '';
-        _existingBatteryController.text = ans['existingBattery'] ?? '';
-        _remarksController.text = ans['remarks'] ?? '';
-        _filledByController.text = ans['filledBy'] ?? '';
+    // 1. Try fetching already submitted form from Firebase
+    final submittedForm = await provider.getSubmittedForm(widget.person.id, 1);
 
-        _applianceWatts.keys.forEach((item) {
-          if (ans.containsKey('qty_$item')) {
-            _qtyControllers[item]?.text = ans['qty_$item'].toString();
-          }
-        });
-      });
+    if (submittedForm != null) {
+      _populateFieldsFromMap(submittedForm.answers);
+      return;
     }
+
+    // 2. If not submitted, fall back to loading local draft
+    final draft = provider.loadDraft(widget.person.id, 1);
+    if (draft != null) {
+      _populateFieldsFromMap(draft.answers);
+    }
+  }
+
+  void _populateFieldsFromMap(Map<String, dynamic> ans) {
+    setState(() {
+      _sfController.text = ans['sfNo']?.toString() ?? _sfController.text;
+      _nameController.text = ans['name']?.toString() ?? _nameController.text;
+      _itsController.text = ans['its']?.toString() ?? _itsController.text;
+      _addressController.text = ans['address'] ?? '';
+      _contactController.text = ans['contact'] ?? '';
+      _dateController.text = ans['date'] ?? _dateController.text;
+      _houseTypeController.text = ans['houseType'] ?? '';
+      _landlordController.text = ans['landlordContact'] ?? '';
+      _noOfPersonsController.text = ans['noOfPersons']?.toString() ?? '';
+      _selectedRoomType =
+          (ans['rooms'] != null && ans['rooms'].toString().isNotEmpty)
+          ? ans['rooms']
+          : null;
+      _kwInstalledController.text = ans['kwInstalled'] ?? '';
+      _panelsWattageController.text = ans['panelsWattage'] ?? '';
+      _inverterCapacityController.text = ans['inverterCapacity'] ?? '';
+      _batteryTypeController.text = ans['batteryType'] ?? '';
+      _normalUpsController.text = ans['normalUpsInstalled'] ?? '';
+      _existingInverterController.text = ans['existingInverter'] ?? '';
+      _existingBatteryController.text = ans['existingBattery'] ?? '';
+      _remarksController.text = ans['remarks'] ?? '';
+      _filledByController.text = ans['filledBy'] ?? '';
+
+      _applianceWatts.keys.forEach((item) {
+        if (ans.containsKey('qty_$item')) {
+          _qtyControllers[item]?.text = ans['qty_$item'].toString();
+        }
+      });
+    });
   }
 
   void _onFieldChanged() {
@@ -323,7 +341,7 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                   SizedBox(
                     width: 200,
                     child: DropdownButtonFormField<String>(
-                      value: _selectedRoomType,
+                      initialValue: _selectedRoomType,
                       decoration: const InputDecoration(
                         labelText: 'Rooms',
                         border: OutlineInputBorder(),
