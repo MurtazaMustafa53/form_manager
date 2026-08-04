@@ -25,9 +25,23 @@ class FirebaseController {
 
     await _formsRef.doc(docid).set(formData.toFirestorMap());
 
-    await _peopleRef.doc(formData.personId).update({
-      'completedFormsCount': FieldValue.increment(1),
-    });
+    final Map<String, dynamic> ans = formData.answers;
+
+    final Map<String, dynamic> personUpdates = {
+      'completedFormCount': 1,
+      'fieldCompletionRatio': ans['completionRatio'] ?? 1.0,
+      'name': (ans['name'] ?? '').toString().trim(),
+      'contact': (ans['contact'] ?? '').toString().trim(),
+      'address': (ans['address'] ?? '').toString().trim(),
+      'houseType': (ans['houseType'] ?? '').toString().trim(),
+      'landlordNameAndContact': (ans['landlordContact'] ?? '')
+          .toString()
+          .trim(),
+      'noOfPersons': int.tryParse((ans['noOfPersons'] ?? '0').toString()) ?? 0,
+      'rooms': (ans['rooms'] ?? '').toString().trim(),
+    };
+
+    await _peopleRef.doc(formData.personId).update(personUpdates);
   }
 
   Future<FormDataModel?> getSubmittedForm(
