@@ -35,4 +35,10 @@ class LocalStorageController {
       return null;
     }
   }
+
+  static Future<bool> clearFormDraft(String personId, int formNumber) async {
+    if (_prefs == null) await init();
+    final key = _getDraftKey(personId, formNumber);
+    return await _prefs!.remove(key);
+  }
 }
