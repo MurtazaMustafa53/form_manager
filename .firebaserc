@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "form-management-ibm"
-  }
+    "default": "form-management-ibm",
+    "Form_Management": "form-management-ibm"
+  },
+  "targets": {},
+  "etags": {}
 }
