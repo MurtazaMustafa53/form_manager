@@ -43,9 +43,9 @@ class PersonModel {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return PersonModel(
       id: doc.id,
-      name: doc['name'] ?? "",
-      its: doc['its'] ?? 0,
-      sfNo: doc['sfNo'] ?? 0,
+      name: data['name'] ?? "",
+      its: data['its'] ?? 0,
+      sfNo: data['sfNo'] ?? 0,
     );
   }
 }
