@@ -181,34 +181,6 @@ class AppProvider extends ChangeNotifier {
   }
 
   // Type 2: Form 1 Import from Excel (Dev & Admin)
-  Future<void> importForm1FromExcel() async {
-    if (!isDev && !isAdmin) {
-      throw Exception('Unauthorized: Log in as Dev or Admin.');
-    }
-
-    final rows = await ExcelService.pickAndReadExcel();
-    if (rows.isEmpty) return;
-
-    for (int i = 1; i < rows.length; i++) {
-      var row = rows[i];
-      if (row.isEmpty || row[0]?.value == null) continue;
-
-      final name = row[0]?.value?.toString().trim() ?? '';
-      final its = int.tryParse(row[1]?.value?.toString() ?? '0') ?? 0;
-      final sfNo = int.tryParse(row[2]?.value?.toString() ?? '0') ?? 0;
-      final contact = row[3]?.value?.toString().trim() ?? '';
-
-      final person = PersonModel(
-        id: 'person_${DateTime.now().millisecondsSinceEpoch}_$i',
-        name: name,
-        its: its,
-        sfNo: sfNo,
-        contact: contact,
-      );
-      await _firebaseController.addPerson(person);
-    }
-    notifyListeners();
-  }
 
   @override
   void dispose() {
