@@ -115,6 +115,18 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> addNewPerson(PersonModel newPerson) async {
+    try {
+      // Save the new person profile directly to Firebase Firestore
+      await _firebaseController.addPerson(newPerson);
+
+      // Notify listeners so the UI updates immediately
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error adding new person: $e');
+    }
+  }
+
   @override
   void dispose() {
     _peopleSubscription?.cancel();

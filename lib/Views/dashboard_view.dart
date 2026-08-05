@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/person_model.dart';
 import 'package:form_manager/Views/login_view.dart';
-import 'package:form_manager/Views/profile_detail_view.dart'; // <-- IMPORT HERE
+import 'package:form_manager/Views/profile_detail_view.dart';
 import 'package:provider/provider.dart';
 
 class DashboardView extends StatefulWidget {
@@ -26,10 +26,104 @@ class _DashboardViewState extends State<DashboardView> {
     super.dispose();
   }
 
+  void _showAddProfileDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final itsController = TextEditingController();
+    final sfController = TextEditingController();
+    final contactController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Add Brand New Profile'),
+          content: SizedBox(
+            width: 400,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFormField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Full Name'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: itsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'ITS Number'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: sfController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: 'SF Number'),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: contactController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'Contact Number',
+                    ),
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                if (formKey.currentState!.validate()) {
+                  final provider = Provider.of<AppProvider>(
+                    context,
+                    listen: false,
+                  );
+
+                  final newPerson = PersonModel(
+                    id: 'person_${DateTime.now().millisecondsSinceEpoch}',
+                    name: nameController.text.trim(),
+                    its: int.parse(itsController.text.trim()),
+                    sfNo: int.parse(sfController.text.trim()),
+                  );
+
+                  await provider.addNewPerson(newPerson);
+
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('New profile created successfully!'),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Save Profile'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   List<PersonModel> _getFilteredAndSortedPeople(List<PersonModel> people) {
     final query = _searchController.text.trim().toLowerCase();
 
-    // 1. Filter
     final filtered = people.where((person) {
       final matchesName = person.name.toLowerCase().contains(query);
       final matchesIts = person.its.toString().contains(query);
@@ -47,24 +141,23 @@ class _DashboardViewState extends State<DashboardView> {
       return matchesSearch && matchesStatus;
     }).toList();
 
-    // 2. Sort
     filtered.sort((a, b) {
       int comparison = 0;
 
       switch (_sortColumnIndex) {
-        case 0: // Status
+        case 0:
           comparison = (a.isComplete ? 1 : 0).compareTo(b.isComplete ? 1 : 0);
           break;
-        case 1: // Name
+        case 1:
           comparison = a.name.toLowerCase().compareTo(b.name.toLowerCase());
           break;
-        case 2: // ITS
+        case 2:
           comparison = a.its.compareTo(b.its);
           break;
-        case 3: // SF No
+        case 3:
           comparison = a.sfNo.compareTo(b.sfNo);
           break;
-        case 4: // Form Progress
+        case 4:
           comparison = a.progressPercentage.compareTo(b.progressPercentage);
           break;
         default:
@@ -93,6 +186,19 @@ class _DashboardViewState extends State<DashboardView> {
         backgroundColor: const Color(0xFF1E293B),
         foregroundColor: Colors.white,
         actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+              icon: const Icon(Icons.person_add, size: 18),
+              label: const Text('Add Profile'),
+              onPressed: () => _showAddProfileDialog(context),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
@@ -131,7 +237,6 @@ class _DashboardViewState extends State<DashboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Stat Cards
                 Wrap(
                   spacing: 16,
                   runSpacing: 16,
@@ -166,7 +271,6 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 const SizedBox(height: 24),
 
-                // Progress Bar Card
                 Card(
                   elevation: 0,
                   color: Colors.white,
@@ -242,7 +346,6 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 const SizedBox(height: 24),
 
-                // Data Table with Search, Filter & Column Sorting
                 Card(
                   elevation: 0,
                   color: Colors.white,

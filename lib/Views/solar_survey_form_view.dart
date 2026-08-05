@@ -63,9 +63,16 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   final _normalUpsController = TextEditingController();
   final _existingInverterController = TextEditingController();
   final _existingBatteryController = TextEditingController();
+
+  // New fields for Form 2
+  final _financeByMuminController = TextEditingController();
+  String? _selectedFinanceExpectation;
+  final List<String> _financeExpectationOptions = ['Yes', 'No'];
+
   final _remarksController = TextEditingController();
   final _filledByController = TextEditingController();
 
+  // Default wattage values mapping, now mutable so they can be edited per session/form
   final Map<String, int> _applianceWatts = {
     'Fan': 80,
     'LED Bulb': 12,
@@ -85,6 +92,7 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   };
 
   final Map<String, TextEditingController> _qtyControllers = {};
+  final Map<String, TextEditingController> _wattControllers = {};
 
   bool _isLoading = false;
   double _completionRatio = 0.0;
@@ -101,6 +109,11 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
     for (var key in _applianceWatts.keys) {
       _qtyControllers[key] = TextEditingController(text: '0');
       _qtyControllers[key]!.addListener(_calculateTotalWatts);
+
+      _wattControllers[key] = TextEditingController(
+        text: _applianceWatts[key].toString(),
+      );
+      _wattControllers[key]!.addListener(_calculateTotalWatts);
     }
 
     _sfController.addListener(_calculateCompletionRatio);
@@ -132,9 +145,13 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
     _normalUpsController.dispose();
     _existingInverterController.dispose();
     _existingBatteryController.dispose();
+    _financeByMuminController.dispose();
     _remarksController.dispose();
     _filledByController.dispose();
     for (var controller in _qtyControllers.values) {
+      controller.dispose();
+    }
+    for (var controller in _wattControllers.values) {
       controller.dispose();
     }
     super.dispose();
@@ -143,7 +160,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   Future<void> _loadFormData() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
 
-    // If this is Form 2, pull Form 1 data silently so backend has access to personal details
     if (widget.formNumber == 2) {
       final formOneData = await provider.getSubmittedForm(widget.person.id, 1);
       if (formOneData != null) {
@@ -207,12 +223,22 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
       _normalUpsController.text = ans['normalUpsInstalled'] ?? '';
       _existingInverterController.text = ans['existingInverter'] ?? '';
       _existingBatteryController.text = ans['existingBattery'] ?? '';
+
+      _financeByMuminController.text = ans['financeByMumin'] ?? '';
+      final loadedFinanceExp = ans['financeExpectation']?.toString();
+      if (_financeExpectationOptions.contains(loadedFinanceExp)) {
+        _selectedFinanceExpectation = loadedFinanceExp;
+      }
+
       _remarksController.text = ans['remarks'] ?? '';
       _filledByController.text = ans['filledBy'] ?? '';
 
       for (var item in _applianceWatts.keys) {
         if (ans.containsKey('qty_$item')) {
           _qtyControllers[item]?.text = ans['qty_$item'].toString();
+        }
+        if (ans.containsKey('watt_$item')) {
+          _wattControllers[item]?.text = ans['watt_$item'].toString();
         }
       }
     });
@@ -222,9 +248,10 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
 
   void _calculateTotalWatts() {
     int watts = 0;
-    _qtyControllers.forEach((key, controller) {
-      final qty = int.tryParse(controller.text) ?? 0;
-      watts += qty * (_applianceWatts[key] ?? 0);
+    _applianceWatts.keys.forEach((key) {
+      final qty = int.tryParse(_qtyControllers[key]?.text ?? '0') ?? 0;
+      final unitWatt = int.tryParse(_wattControllers[key]?.text ?? '0') ?? 0;
+      watts += qty * unitWatt;
     });
     setState(() => _totalWatts = watts);
   }
@@ -266,14 +293,17 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
       'normalUpsInstalled': _normalUpsController.text,
       'existingInverter': _existingInverterController.text,
       'existingBattery': _existingBatteryController.text,
+      'financeByMumin': _financeByMuminController.text,
+      'financeExpectation': _selectedFinanceExpectation ?? '',
       'remarks': _remarksController.text,
       'filledBy': _filledByController.text,
       'totalWatts': _totalWatts,
       'completionRatio': _completionRatio,
     };
 
-    _qtyControllers.forEach((key, controller) {
-      map['qty_$key'] = int.tryParse(controller.text) ?? 0;
+    _applianceWatts.keys.forEach((key) {
+      map['qty_$key'] = int.tryParse(_qtyControllers[key]?.text ?? '0') ?? 0;
+      map['watt_$key'] = int.tryParse(_wattControllers[key]?.text ?? '0') ?? 0;
     });
 
     return map;
@@ -380,7 +410,7 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Calculated Watts: $_totalWatts W',
+                                  'Calculated Total Watts: $_totalWatts W',
                                   style: const TextStyle(
                                     color: Color(0xFF2563EB),
                                     fontWeight: FontWeight.bold,
@@ -402,7 +432,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                     ),
                     const SizedBox(height: 24),
 
-                    // ONLY SHOW PERSONAL PROFILE DETAILS IF THIS IS FORM 1
                     if (isFormOne) ...[
                       _buildSectionHeader('1. Personal Profile Details'),
                       const SizedBox(height: 12),
@@ -438,7 +467,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                             enabled: isEditable,
                           ),
 
-                          // House Type Dropdown
                           SizedBox(
                             width: 260,
                             child: DropdownButtonFormField<String>(
@@ -467,7 +495,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                             ),
                           ),
 
-                          // Total Number of Rooms Dropdown
                           SizedBox(
                             width: 260,
                             child: DropdownButtonFormField<String>(
@@ -513,7 +540,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                             enabled: isEditable,
                           ),
 
-                          // Are you willing to install solar?
                           SizedBox(
                             width: 300,
                             child: DropdownButtonFormField<String>(
@@ -542,7 +568,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                             ),
                           ),
 
-                          // Is your landlord's approval required for rooftop solar installation?
                           SizedBox(
                             width: 380,
                             child: DropdownButtonFormField<String>(
@@ -576,7 +601,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                       const SizedBox(height: 24),
                     ],
 
-                    // IF FORM 2, SHOW APPLIANCES AND SOLAR SECTIONS
                     if (!isFormOne) ...[
                       _buildSectionHeader('2. Electrical Appliances Load'),
                       const SizedBox(height: 12),
@@ -590,38 +614,134 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                         child: Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
-                            children: _applianceWatts.keys.map((item) {
-                              return Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 8.0,
-                                ),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text('$item (${_applianceWatts[item]}W)'),
-                                    SizedBox(
-                                      width: 80,
-                                      child: TextField(
-                                        controller: _qtyControllers[item],
-                                        keyboardType: TextInputType.number,
-                                        enabled: isEditable,
-                                        decoration: const InputDecoration(
-                                          isDense: true,
-                                          border: OutlineInputBorder(),
-                                        ),
+                            children: [
+                              // Table Header
+                              const Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Text(
+                                      'Appliance',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                  ],
-                                ),
-                              );
-                            }).toList(),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      'Watts',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      'Qty',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      'Total (W)',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const Divider(height: 20),
+                              ..._applianceWatts.keys.map((item) {
+                                final qty =
+                                    int.tryParse(
+                                      _qtyControllers[item]?.text ?? '0',
+                                    ) ??
+                                    0;
+                                final unitWatt =
+                                    int.tryParse(
+                                      _wattControllers[item]?.text ?? '0',
+                                    ) ??
+                                    0;
+                                final itemTotal = qty * unitWatt;
+
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8.0,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        flex: 3,
+                                        child: Text(
+                                          item,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 8.0,
+                                          ),
+                                          child: TextField(
+                                            controller: _wattControllers[item],
+                                            keyboardType: TextInputType.number,
+                                            enabled: isEditable,
+                                            decoration: const InputDecoration(
+                                              isDense: true,
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(
+                                            right: 8.0,
+                                          ),
+                                          child: TextField(
+                                            controller: _qtyControllers[item],
+                                            keyboardType: TextInputType.number,
+                                            enabled: isEditable,
+                                            decoration: const InputDecoration(
+                                              isDense: true,
+                                              border: OutlineInputBorder(),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        flex: 2,
+                                        child: Text(
+                                          '$itemTotal W',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF2563EB),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                            ],
                           ),
                         ),
                       ),
                       const SizedBox(height: 24),
 
-                      _buildSectionHeader('3. Existing Solar / Backup System'),
+                      _buildSectionHeader(
+                        '3. Existing Solar / Backup System & Finance',
+                      ),
                       const SizedBox(height: 12),
                       Wrap(
                         spacing: 16,
@@ -663,16 +783,67 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                             enabled: isEditable,
                           ),
                           _buildTextField(
+                            _financeByMuminController,
+                            'Finance by Mumin',
+                            enabled: isEditable,
+                          ),
+
+                          // Finance as per expectation Dropdown
+                          SizedBox(
+                            width: 260,
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedFinanceExpectation,
+                              decoration: InputDecoration(
+                                labelText: 'Finance as per expectation',
+                                filled: true,
+                                fillColor: isEditable
+                                    ? Colors.white
+                                    : Colors.grey.shade100,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              items: _financeExpectationOptions.map((opt) {
+                                return DropdownMenuItem(
+                                  value: opt,
+                                  child: Text(opt),
+                                );
+                              }).toList(),
+                              onChanged: isEditable
+                                  ? (value) => setState(
+                                      () => _selectedFinanceExpectation = value,
+                                    )
+                                  : null,
+                            ),
+                          ),
+
+                          _buildTextField(
                             _filledByController,
                             'Filled By Staff Name',
                             enabled: isEditable,
                           ),
-                          _buildTextField(
-                            _remarksController,
-                            'Remarks',
-                            enabled: isEditable,
-                          ),
                         ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Remarks Box set to full width
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextFormField(
+                          controller: _remarksController,
+                          maxLines: 3,
+                          enabled: isEditable,
+                          decoration: InputDecoration(
+                            labelText: 'Remarks',
+                            filled: true,
+                            fillColor: isEditable
+                                ? Colors.white
+                                : Colors.grey.shade100,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 32),
                     ],
