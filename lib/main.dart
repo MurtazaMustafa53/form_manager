@@ -31,6 +31,7 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           title: 'Forms Manager',
           debugShowCheckedModeBanner: false,
+
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
           ),
