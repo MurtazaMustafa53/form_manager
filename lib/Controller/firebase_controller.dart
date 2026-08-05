@@ -20,14 +20,16 @@ class FirebaseController {
     await _peopleRef.doc(person.id).set(person.toMap());
   }
 
+  Future<void> deletePerson(String personId) async {
+    await _peopleRef.doc(personId).delete();
+  }
+
   Future<void> submitForm(FormDataModel formData) async {
     final String docid = '${formData.personId}_form_${formData.formNumber}';
-
     await _formsRef.doc(docid).set(formData.toFirestorMap());
 
     final Map<String, dynamic> ans = formData.answers;
 
-    // Update person profile fields in Firestore including new survey fields
     final Map<String, dynamic> personUpdates = {
       'completedFormCount': FieldValue.increment(1),
       'fieldCompletionRatio': ans['completionRatio'] ?? 1.0,

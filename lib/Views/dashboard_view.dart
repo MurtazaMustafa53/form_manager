@@ -16,7 +16,6 @@ class _DashboardViewState extends State<DashboardView> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatusFilter = 'All';
 
-  // Sorting State
   int _sortColumnIndex = 1;
   bool _isAscending = true;
 
@@ -99,17 +98,23 @@ class _DashboardViewState extends State<DashboardView> {
                     name: nameController.text.trim(),
                     its: int.parse(itsController.text.trim()),
                     sfNo: int.parse(sfController.text.trim()),
+                    contact: contactController.text.trim(),
                   );
 
-                  await provider.addNewPerson(newPerson);
-
-                  if (context.mounted) {
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('New profile created successfully!'),
-                      ),
-                    );
+                  try {
+                    await provider.addNewPerson(newPerson);
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('New profile created successfully!'),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text(e.toString())));
                   }
                 }
               },
@@ -143,7 +148,6 @@ class _DashboardViewState extends State<DashboardView> {
 
     filtered.sort((a, b) {
       int comparison = 0;
-
       switch (_sortColumnIndex) {
         case 0:
           comparison = (a.isComplete ? 1 : 0).compareTo(b.isComplete ? 1 : 0);
@@ -163,7 +167,6 @@ class _DashboardViewState extends State<DashboardView> {
         default:
           comparison = 0;
       }
-
       return _isAscending ? comparison : -comparison;
     });
 
@@ -179,6 +182,10 @@ class _DashboardViewState extends State<DashboardView> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+    final isDev = provider.isDev;
+    final isAdmin = provider.isAdmin;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
@@ -186,24 +193,60 @@ class _DashboardViewState extends State<DashboardView> {
         backgroundColor: const Color(0xFF1E293B),
         foregroundColor: Colors.white,
         actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                foregroundColor: Colors.white,
-                elevation: 0,
+          if (isDev || isAdmin)
+            if (isDev)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4.0,
+                  vertical: 8.0,
+                ),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C3AED),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
+                  icon: const Icon(Icons.playlist_add, size: 18),
+                  label: const Text('Import Profiles'),
+                  onPressed: () async {
+                    try {
+                      await provider.importProfilesFromExcel();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Profiles imported successfully!'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      ScaffoldMessenger.of(
+                        context,
+                      ).showSnackBar(SnackBar(content: Text(e.toString())));
+                    }
+                  },
+                ),
               ),
-              icon: const Icon(Icons.person_add, size: 18),
-              label: const Text('Add Profile'),
-              onPressed: () => _showAddProfileDialog(context),
+          if (isDev)
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 4.0,
+                vertical: 8.0,
+              ),
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF10B981),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                ),
+                icon: const Icon(Icons.person_add, size: 18),
+                label: const Text('Add Profile'),
+                onPressed: () => _showAddProfileDialog(context),
+              ),
             ),
-          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
             onPressed: () async {
-              final provider = Provider.of<AppProvider>(context, listen: false);
               await provider.logout();
               if (context.mounted) {
                 Navigator.pushAndRemoveUntil(
@@ -229,7 +272,6 @@ class _DashboardViewState extends State<DashboardView> {
               ? (completedForms / totalProfiles)
               : 0.0;
           final pendingCount = people.where((p) => !p.isComplete).length;
-
           final displayedPeople = _getFilteredAndSortedPeople(people);
 
           return SingleChildScrollView(
@@ -237,282 +279,380 @@ class _DashboardViewState extends State<DashboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
+                // 3 Styled Metric Cards exactly matching the screenshot layout
+                Row(
                   children: [
-                    _buildStatCard(
-                      title: 'Total Profiles',
-                      value: '$totalProfiles',
-                      subtitle:
-                          '${(overallProgress * 100).toStringAsFixed(0)}% Completed',
-                      backgroundColor: const Color(0xFF2563EB),
-                      icon: Icons.people_outline,
-                      isWhite: false,
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total Profiles',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.people,
+                                  color: Colors.white70,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              totalProfiles.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${(overallProgress * 100).toInt()}% Completed',
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    _buildStatCard(
-                      title: 'Forms Submitted',
-                      value: '$completedForms/$totalProfiles',
-                      subtitle:
-                          '${(overallProgress * 100).toStringAsFixed(0)}% Overall Progress',
-                      backgroundColor: Colors.white,
-                      icon: Icons.assignment_turned_in_outlined,
-                      isWhite: true,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Forms Submitted',
+                                  style: TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.assignment_turned_in_outlined,
+                                  color: Colors.grey.shade400,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              '$completedForms/$totalProfiles',
+                              style: const TextStyle(
+                                color: Color(0xFF1E293B),
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              '${(overallProgress * 100).toInt()}% Overall Progress',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    _buildStatCard(
-                      title: 'Pending Forms',
-                      value: '$pendingCount',
-                      subtitle: 'Needs Attention',
-                      backgroundColor: const Color(0xFFF97316),
-                      icon: Icons.access_time_rounded,
-                      isWhite: false,
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF97316),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Pending Forms',
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const Icon(
+                                  Icons.schedule,
+                                  color: Colors.white70,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              pendingCount.toString(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Needs Attention',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                Card(
-                  elevation: 0,
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
+                // Survey Completion Progress Tracker Section
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade200),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              'Survey Completion Progress',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                            Text(
-                              '${(overallProgress * 100).toStringAsFixed(0)}%',
-                              style: const TextStyle(
-                                color: Color(0xFF10B981),
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Survey Completion Progress',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                          color: Color(0xFF1E293B),
                         ),
-                        const SizedBox(height: 16),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: overallProgress,
-                            minHeight: 10,
-                            backgroundColor: const Color(0xFFE2E8F0),
-                            color: const Color(0xFF10B981),
+                      ),
+                      const SizedBox(height: 16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: overallProgress,
+                          minHeight: 8,
+                          backgroundColor: const Color(0xFFE2E8F0),
+                          color: const Color(0xFF2563EB),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${(overallProgress * 100).toInt()}%',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              '0%',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
+                          Text(
+                            '$completedForms of $totalProfiles forms submitted',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
                             ),
-                            Text(
-                              '$completedForms of $totalProfiles forms submitted',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const Text(
-                              '100%',
-                              style: TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                Card(
-                  elevation: 0,
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
+                // Client Survey List Card Section
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.grey.shade200),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          alignment: WrapAlignment.spaceBetween,
-                          spacing: 16,
-                          runSpacing: 12,
-                          children: [
-                            const Text(
-                              'Client Survey List',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFF1E293B),
-                              ),
-                            ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: 240,
-                                  child: TextField(
-                                    controller: _searchController,
-                                    decoration: InputDecoration(
-                                      hintText: 'Search Name, ITS, SF...',
-                                      prefixIcon: const Icon(
-                                        Icons.search,
-                                        size: 20,
-                                      ),
-                                      suffixIcon:
-                                          _searchController.text.isNotEmpty
-                                          ? IconButton(
-                                              icon: const Icon(
-                                                Icons.clear,
-                                                size: 18,
-                                              ),
-                                              onPressed: () {
-                                                _searchController.clear();
-                                                setState(() {});
-                                              },
-                                            )
-                                          : null,
-                                      isDense: true,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 10,
-                                          ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                    onChanged: (_) => setState(() {}),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(
-                                      color: Colors.grey.shade400,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      value: _selectedStatusFilter,
-                                      isDense: true,
-                                      items: const [
-                                        DropdownMenuItem(
-                                          value: 'All',
-                                          child: Text('All Status'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'Pending',
-                                          child: Text('Pending'),
-                                        ),
-                                        DropdownMenuItem(
-                                          value: 'Submitted',
-                                          child: Text('Submitted'),
-                                        ),
-                                      ],
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          setState(() {
-                                            _selectedStatusFilter = value;
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        if (displayedPeople.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 32.0),
-                            child: Center(
-                              child: Text(
-                                people.isEmpty
-                                    ? 'No profiles loaded from Firebase yet.'
-                                    : 'No profiles match your search criteria.',
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                            ),
-                          )
-                        else
-                          SizedBox(
-                            width: double.infinity,
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: DataTable(
-                                sortColumnIndex: _sortColumnIndex,
-                                sortAscending: _isAscending,
-                                horizontalMargin: 12,
-                                columnSpacing: 28,
-                                columns: [
-                                  DataColumn(
-                                    label: const Text('Status'),
-                                    onSort: _onSort,
-                                  ),
-                                  DataColumn(
-                                    label: const Text('Name'),
-                                    onSort: _onSort,
-                                  ),
-                                  DataColumn(
-                                    label: const Text('ITS'),
-                                    numeric: true,
-                                    onSort: _onSort,
-                                  ),
-                                  DataColumn(
-                                    label: const Text('SF No'),
-                                    numeric: true,
-                                    onSort: _onSort,
-                                  ),
-                                  DataColumn(
-                                    label: const Text('Form Progress'),
-                                    onSort: _onSort,
-                                  ),
-                                  const DataColumn(label: Text('Action')),
-                                ],
-                                rows: displayedPeople
-                                    .map(
-                                      (person) =>
-                                          _buildTableRow(context, person),
-                                    )
-                                    .toList(),
-                              ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Client Survey List',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Color(0xFF1E293B),
                             ),
                           ),
-                      ],
-                    ),
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 260,
+                                height: 40,
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: (val) => setState(() {}),
+                                  decoration: InputDecoration(
+                                    hintText: 'Search Name, ITS, SF...',
+                                    hintStyle: const TextStyle(fontSize: 13),
+                                    prefixIcon: const Icon(
+                                      Icons.search,
+                                      size: 18,
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 0,
+                                      horizontal: 10,
+                                    ),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF8FAFC),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                      borderSide: BorderSide(
+                                        color: Colors.grey.shade300,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Container(
+                                height: 40,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: Colors.grey.shade300,
+                                  ),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedStatusFilter == 'All'
+                                        ? 'All Status'
+                                        : _selectedStatusFilter,
+                                    items:
+                                        ['All Status', 'Submitted', 'Pending']
+                                            .map(
+                                              (status) => DropdownMenuItem(
+                                                value: status,
+                                                child: Text(
+                                                  status,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ),
+                                            )
+                                            .toList(),
+                                    onChanged: (val) {
+                                      if (val != null) {
+                                        setState(() {
+                                          _selectedStatusFilter =
+                                              val == 'All Status' ? 'All' : val;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      if (displayedPeople.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 32.0),
+                          child: Center(
+                            child: Text(
+                              'No profiles match your criteria.',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        )
+                      else
+                        SizedBox(
+                          width: double.infinity,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: DataTable(
+                              sortColumnIndex: _sortColumnIndex,
+                              sortAscending: _isAscending,
+                              horizontalMargin: 0,
+                              columnSpacing: 32,
+                              columns: [
+                                DataColumn(
+                                  label: const Text('Status'),
+                                  onSort: _onSort,
+                                ),
+                                DataColumn(
+                                  label: const Text('Name'),
+                                  onSort: _onSort,
+                                ),
+                                DataColumn(
+                                  label: const Text('ITS'),
+                                  numeric: true,
+                                  onSort: _onSort,
+                                ),
+                                DataColumn(
+                                  label: const Text('SF No'),
+                                  numeric: true,
+                                  onSort: _onSort,
+                                ),
+                                DataColumn(
+                                  label: const Text('Form Progress'),
+                                  onSort: _onSort,
+                                ),
+                                const DataColumn(label: Text('Action')),
+                                if (isDev)
+                                  const DataColumn(label: Text('Delete')),
+                              ],
+                              rows: displayedPeople
+                                  .map(
+                                    (person) =>
+                                        _buildTableRow(context, person, isDev),
+                                  )
+                                  .toList(),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
               ],
@@ -523,66 +663,7 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
-  Widget _buildStatCard({
-    required String title,
-    required String value,
-    required String subtitle,
-    required Color backgroundColor,
-    required IconData icon,
-    required bool isWhite,
-  }) {
-    return Container(
-      width: 210,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: isWhite ? Border.all(color: Colors.grey.shade200) : null,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  color: isWhite ? Colors.grey.shade700 : Colors.white70,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Icon(
-                icon,
-                color: isWhite ? const Color(0xFF2563EB) : Colors.white70,
-                size: 20,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: TextStyle(
-              color: isWhite ? const Color(0xFF1E293B) : Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            subtitle,
-            style: TextStyle(
-              color: isWhite ? Colors.grey.shade600 : Colors.white70,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  DataRow _buildTableRow(BuildContext context, PersonModel person) {
+  DataRow _buildTableRow(BuildContext context, PersonModel person, bool isDev) {
     final provider = Provider.of<AppProvider>(context, listen: false);
     final bool isViewer = provider.isViewer;
     final bool isComplete = person.isComplete;
@@ -590,91 +671,132 @@ class _DashboardViewState extends State<DashboardView> {
 
     final String buttonText = isViewer
         ? 'View Details'
-        : (isComplete ? 'View Details' : 'Open Profile');
+        : (isComplete ? 'View Details' : 'View Details');
 
-    return DataRow(
-      cells: [
-        DataCell(
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
+    List<DataCell> cells = [
+      DataCell(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: isComplete
+                ? const Color(0xFFDCFCE7)
+                : const Color(0xFFFEF3C7),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            isComplete ? 'Submitted' : 'Pending',
+            style: TextStyle(
               color: isComplete
-                  ? const Color(0xFFDCFCE7)
-                  : const Color(0xFFFEF3C7),
+                  ? const Color(0xFF166534)
+                  : const Color(0xFF92400E),
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      DataCell(
+        Text(person.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ),
+      DataCell(Text('${person.its}')),
+      DataCell(Text('${person.sfNo}')),
+      DataCell(
+        SizedBox(
+          width: 100,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$percentage%',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 2),
+              LinearProgressIndicator(
+                value: person.progressPercentage,
+                minHeight: 4,
+                backgroundColor: const Color(0xFFE2E8F0),
+                color: isComplete
+                    ? const Color(0xFF10B981)
+                    : const Color(0xFFF59E0B),
+              ),
+            ],
+          ),
+        ),
+      ),
+      DataCell(
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2563EB),
+            foregroundColor: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text(
-              isComplete ? 'Submitted' : 'Pending',
-              style: TextStyle(
-                color: isComplete
-                    ? const Color(0xFF166534)
-                    : const Color(0xFF92400E),
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ProfileDetailView(person: person),
               ),
-            ),
-          ),
+            );
+          },
+          child: Text(buttonText),
         ),
+      ),
+    ];
+
+    if (isDev) {
+      cells.add(
         DataCell(
-          Text(
-            person.name,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-        ),
-        DataCell(Text('${person.its}')),
-        DataCell(Text('${person.sfNo}')),
-        DataCell(
-          SizedBox(
-            width: 100,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$percentage%',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            tooltip: 'Delete Profile (Dev Only)',
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Confirm Deletion'),
+                  content: Text(
+                    'Are you sure you want to delete ${person.name}?',
                   ),
-                ),
-                const SizedBox(height: 2),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: person.progressPercentage,
-                    minHeight: 4,
-                    backgroundColor: const Color(0xFFE2E8F0),
-                    color: isComplete
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFF59E0B),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        DataCell(
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              foregroundColor: Colors.white,
-              elevation: 0,
-            ),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ProfileDetailView(person: person),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
                 ),
               );
+
+              if (confirm == true) {
+                await provider.deletePerson(person.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Profile deleted successfully.'),
+                    ),
+                  );
+                }
+              }
             },
-            child: Text(buttonText),
           ),
         ),
-      ],
-    );
+      );
+    }
+
+    return DataRow(cells: cells);
   }
 }

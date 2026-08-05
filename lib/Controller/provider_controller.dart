@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:form_manager/Controller/Excel_controller.dart';
 import 'package:form_manager/Controller/firebase_controller.dart';
 import 'package:form_manager/Controller/local_storage_controller.dart';
 import 'package:form_manager/Model/form_data_model.dart';
@@ -19,6 +20,7 @@ class AppProvider extends ChangeNotifier {
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
 
+  bool get isDev => _currentUser?.isDev ?? false;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
   bool get isViewer => _currentUser?.isViewer ?? false;
   bool get isLoggedIn => _currentUser != null;
@@ -34,9 +36,17 @@ class AppProvider extends ChangeNotifier {
     final savedEmail = prefs.getString('user_email');
 
     if (savedRole != null && savedEmail != null) {
-      final role = savedRole == 'admin' ? UserRole.admin : UserRole.viewer;
+      UserRole role;
+      if (savedRole == 'dev') {
+        role = UserRole.dev;
+      } else if (savedRole == 'admin') {
+        role = UserRole.admin;
+      } else {
+        role = UserRole.viewer;
+      }
+
       _currentUser = UserModel(
-        uid: savedRole == 'admin' ? 'admin_01' : 'viewer_01',
+        uid: '${savedRole}_01',
         email: savedEmail,
         role: role,
       );
@@ -48,24 +58,27 @@ class AppProvider extends ChangeNotifier {
     final cleanEmail = email.trim().toLowerCase();
     UserRole? role;
 
-    if (cleanEmail == 'admin@ibm.com' && password == 'admin123') {
+    if (cleanEmail == 'dev@ibm.com' && password == 'dev123') {
+      role = UserRole.dev;
+    } else if (cleanEmail == 'admin@ibm.com' && password == 'admin123') {
       role = UserRole.admin;
     } else if (cleanEmail == 'viewer@ibm.com' && password == 'viewer123') {
       role = UserRole.viewer;
     }
 
     if (role != null) {
+      String roleString = role == UserRole.dev
+          ? 'dev'
+          : (role == UserRole.admin ? 'admin' : 'viewer');
+
       _currentUser = UserModel(
-        uid: role == UserRole.admin ? 'admin_01' : 'viewer_01',
+        uid: '${roleString}_01',
         email: cleanEmail,
         role: role,
       );
 
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'user_role',
-        role == UserRole.admin ? 'admin' : 'viewer',
-      );
+      await prefs.setString('user_role', roleString);
       await prefs.setString('user_email', cleanEmail);
 
       notifyListeners();
@@ -115,16 +128,86 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Add Profile (Dev Only)
   Future<void> addNewPerson(PersonModel newPerson) async {
-    try {
-      // Save the new person profile directly to Firebase Firestore
-      await _firebaseController.addPerson(newPerson);
-
-      // Notify listeners so the UI updates immediately
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error adding new person: $e');
+    if (!isDev) {
+      throw Exception('Unauthorized: Only Dev ID can add profiles.');
     }
+    await _firebaseController.addPerson(newPerson);
+    notifyListeners();
+  }
+
+  // Delete Profile (Dev Only)
+  Future<void> deletePerson(String personId) async {
+    if (!isDev) {
+      throw Exception('Unauthorized: Only Dev ID can delete profiles.');
+    }
+    await _firebaseController.deletePerson(personId);
+    notifyListeners();
+  }
+
+  // Type 1: Import Profiles from Excel (Dev Only)
+  // Type 1: Import Profiles from Excel (Dev Only)
+  Future<void> importProfilesFromExcel() async {
+    if (!isDev) {
+      throw Exception('Unauthorized: Log in as Dev to import profiles.');
+    }
+
+    final rows = await ExcelService.pickAndReadExcel();
+    if (rows.isEmpty) return;
+
+    // Expecting columns: [Name, ITS, SF No, Contact]
+    for (int i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      if (row.isEmpty || row[0]?.value == null) continue;
+
+      final name = row[0]?.value?.toString().trim() ?? '';
+      final its = int.tryParse(row[1]?.value?.toString() ?? '0') ?? 0;
+      final sfNo = int.tryParse(row[2]?.value?.toString() ?? '0') ?? 0;
+      final contact = row[3]?.value?.toString().trim() ?? '';
+
+      if (name.isNotEmpty) {
+        final person = PersonModel(
+          id: 'person_${DateTime.now().millisecondsSinceEpoch}_$i',
+          name: name,
+          its: its,
+          sfNo: sfNo,
+          contact: contact,
+        );
+        await _firebaseController.addPerson(person);
+      }
+    }
+    notifyListeners();
+  }
+
+  // Type 2: Form 1 Import from Excel (Dev & Admin)
+  Future<void> importForm1FromExcel() async {
+    if (!isDev && !isAdmin) {
+      throw Exception('Unauthorized: Log in as Dev or Admin.');
+    }
+
+    final rows = await ExcelService.pickAndReadExcel();
+    if (rows.isEmpty) return;
+
+    for (int i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      if (row.isEmpty || row[0]?.value == null) continue;
+
+      final name = row[0]?.value?.toString().trim() ?? '';
+      final its = int.tryParse(row[1]?.value?.toString() ?? '0') ?? 0;
+      final sfNo = int.tryParse(row[2]?.value?.toString() ?? '0') ?? 0;
+      final contact = row[3]?.value?.toString().trim() ?? '';
+
+      final person = PersonModel(
+        id: 'person_${DateTime.now().millisecondsSinceEpoch}_$i',
+        name: name,
+        its: its,
+        sfNo: sfNo,
+        contact: contact,
+      );
+      await _firebaseController.addPerson(person);
+    }
+    notifyListeners();
   }
 
   @override
