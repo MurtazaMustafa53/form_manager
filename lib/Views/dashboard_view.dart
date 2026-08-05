@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/person_model.dart';
 import 'package:form_manager/Views/login_view.dart';
-import 'package:form_manager/Views/solar_survey_form_view.dart';
+import 'package:form_manager/Views/profile_detail_view.dart'; // <-- IMPORT HERE
 import 'package:provider/provider.dart';
 
 class DashboardView extends StatefulWidget {
@@ -257,7 +257,6 @@ class _DashboardViewState extends State<DashboardView> {
                       children: [
                         Wrap(
                           alignment: WrapAlignment.spaceBetween,
-                          // cross: WrapCrossAlignment.center,
                           spacing: 16,
                           runSpacing: 12,
                           children: [
@@ -487,8 +486,8 @@ class _DashboardViewState extends State<DashboardView> {
     final int percentage = (person.progressPercentage * 100).toInt();
 
     final String buttonText = isViewer
-        ? 'View Form'
-        : (isComplete ? 'View Form' : 'Fill Form');
+        ? 'View Details'
+        : (isComplete ? 'View Details' : 'Open Profile');
 
     return DataRow(
       cells: [
@@ -557,94 +556,22 @@ class _DashboardViewState extends State<DashboardView> {
         DataCell(
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: isComplete
-                  ? Colors.grey.shade300
-                  : const Color(0xFF2563EB),
-              foregroundColor: isComplete ? Colors.black87 : Colors.white,
+              backgroundColor: const Color(0xFF2563EB),
+              foregroundColor: Colors.white,
               elevation: 0,
             ),
             onPressed: () {
-              _showFormSelectionDialog(context, person);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ProfileDetailView(person: person),
+                ),
+              );
             },
             child: Text(buttonText),
           ),
         ),
       ],
-    );
-  }
-
-  void _showFormSelectionDialog(BuildContext context, PersonModel person) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select Form for ${person.name}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Completed ${person.completedFormCount} of 6 forms (Only Form 1 Available)',
-                style: const TextStyle(color: Colors.grey, fontSize: 13),
-              ),
-              const SizedBox(height: 20),
-              GridView.builder(
-                shrinkWrap: true,
-                itemCount: 6,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 2.2,
-                ),
-                itemBuilder: (context, index) {
-                  final formNum = index + 1;
-                  final bool isFormOne = formNum == 1;
-
-                  return ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isFormOne
-                          ? const Color(0xFF2563EB)
-                          : Colors.grey.shade300,
-                      foregroundColor: isFormOne
-                          ? Colors.white
-                          : Colors.grey.shade600,
-                      elevation: isFormOne ? 2 : 0,
-                    ),
-                    // Passing null to onPressed grays out and disables interaction for forms 2-6
-                    onPressed: isFormOne
-                        ? () {
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SolarSurveyFormView(
-                                  person: person,
-                                  formNumber: formNum,
-                                ),
-                              ),
-                            );
-                          }
-                        : null,
-                    child: Text('Form $formNum'),
-                  );
-                },
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

@@ -11,6 +11,8 @@ class PersonModel {
   final String landlordNameAndContact;
   final int noOfPersons;
   final String rooms;
+  final String solarWillingness;
+  final String landlordApproval;
   int completedFormCount;
   double fieldCompletionRatio;
 
@@ -25,14 +27,14 @@ class PersonModel {
     this.landlordNameAndContact = '',
     this.noOfPersons = 0,
     this.rooms = '',
+    this.solarWillingness = '',
+    this.landlordApproval = '',
     this.completedFormCount = 0,
     this.fieldCompletionRatio = 0.0,
   });
 
-  // Complete only when all 6 forms are submitted
   bool get isComplete => completedFormCount >= 6;
 
-  // Overall progress ratio across 6 forms (e.g., 3 forms completed = 50%)
   double get progressPercentage {
     if (isComplete) return 1.0;
     return (completedFormCount / 6.0).clamp(0.0, 1.0);
@@ -66,6 +68,8 @@ class PersonModel {
       'landlordNameAndContact': landlordNameAndContact,
       'noOfPersons': noOfPersons,
       'rooms': rooms,
+      'solarWillingness': solarWillingness,
+      'landlordApproval': landlordApproval,
       'completedFormCount': completedFormCount,
       'fieldCompletionRatio': fieldCompletionRatio,
     };
@@ -83,6 +87,8 @@ class PersonModel {
       landlordNameAndContact: map['landlordNameAndContact']?.toString() ?? '',
       noOfPersons: _parseInt(map['noOfPersons']),
       rooms: map['rooms']?.toString() ?? '',
+      solarWillingness: map['solarWillingness']?.toString() ?? '',
+      landlordApproval: map['landlordApproval']?.toString() ?? '',
       completedFormCount: _parseInt(map['completedFormCount']),
       fieldCompletionRatio: _parseDouble(map['fieldCompletionRatio']),
     );
@@ -101,6 +107,8 @@ class PersonModel {
       landlordNameAndContact: data['landlordNameAndContact']?.toString() ?? '',
       noOfPersons: _parseInt(data['noOfPersons']),
       rooms: data['rooms']?.toString() ?? '',
+      solarWillingness: data['solarWillingness']?.toString() ?? '',
+      landlordApproval: data['landlordApproval']?.toString() ?? '',
       completedFormCount: _parseInt(data['completedFormCount']),
       fieldCompletionRatio: _parseDouble(data['fieldCompletionRatio']),
     );

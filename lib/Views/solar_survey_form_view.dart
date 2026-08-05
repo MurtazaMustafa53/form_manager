@@ -21,7 +21,7 @@ class SolarSurveyFormView extends StatefulWidget {
 class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   final _formKey = GlobalKey<FormState>();
 
-  // General & Personal Controllers
+  // General & Personal Controllers (For Form 1)
   late TextEditingController _sfController;
   late TextEditingController _nameController;
   late TextEditingController _itsController;
@@ -29,15 +29,33 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   final _contactController = TextEditingController();
   final _dateController = TextEditingController();
 
-  // House Type & Separated Landlord Details
+  // House Type & Landlord Details
   String? _selectedHouseType;
-  final List<String> _houseTypeOptions = ['Ownership', 'Rented', 'Goodwill'];
+  final List<String> _houseTypeOptions = ['Ownership', 'Rent', 'Goodwill'];
   final _landlordNameController = TextEditingController();
   final _landlordContactController = TextEditingController();
   final _noOfPersonsController = TextEditingController();
-  String? _selectedRoomType;
 
-  // System & Survey Details
+  // Room Type & Survey Dropdowns
+  String? _selectedRoomType;
+  final List<String> _roomTypeOptions = [
+    '2-Bed Lounge',
+    '3-Bed Lounge',
+    '2-Bed D/D',
+    '3-Bed D/D',
+  ];
+
+  String? _selectedSolarWillingness;
+  final List<String> _solarWillingnessOptions = [
+    'Yes',
+    'No',
+    'Already Installed',
+  ];
+
+  String? _selectedLandlordApproval;
+  final List<String> _landlordApprovalOptions = ['Maybe', 'Yes', 'No'];
+
+  // System & Survey Details (For Form 2)
   final _kwInstalledController = TextEditingController();
   final _panelsWattageController = TextEditingController();
   final _inverterCapacityController = TextEditingController();
@@ -125,6 +143,14 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   Future<void> _loadFormData() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
 
+    // If this is Form 2, pull Form 1 data silently so backend has access to personal details
+    if (widget.formNumber == 2) {
+      final formOneData = await provider.getSubmittedForm(widget.person.id, 1);
+      if (formOneData != null) {
+        _populateFieldsFromMap(formOneData.answers);
+      }
+    }
+
     final submittedForm = await provider.getSubmittedForm(
       widget.person.id,
       widget.formNumber,
@@ -146,23 +172,34 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
       _sfController.text = ans['sfNo']?.toString() ?? _sfController.text;
       _nameController.text = ans['name']?.toString() ?? _nameController.text;
       _itsController.text = ans['its']?.toString() ?? _itsController.text;
-      _addressController.text = ans['address'] ?? '';
-      _contactController.text = ans['contact'] ?? '';
+      _addressController.text = ans['address'] ?? _addressController.text;
+      _contactController.text = ans['contact'] ?? _contactController.text;
       _dateController.text = ans['date'] ?? _dateController.text;
 
       final loadedHouseType = ans['houseType']?.toString();
-      _selectedHouseType = (_houseTypeOptions.contains(loadedHouseType))
-          ? loadedHouseType
-          : null;
+      if (_houseTypeOptions.contains(loadedHouseType)) {
+        _selectedHouseType = loadedHouseType;
+      }
 
-      _landlordNameController.text =
-          ans['landlordName'] ?? ans['landlordNameAndContact'] ?? '';
+      _landlordNameController.text = ans['landlordName'] ?? '';
       _landlordContactController.text = ans['landlordContact'] ?? '';
       _noOfPersonsController.text = ans['noOfPersons']?.toString() ?? '';
-      _selectedRoomType =
-          (ans['rooms'] != null && ans['rooms'].toString().isNotEmpty)
-          ? ans['rooms']
-          : null;
+
+      final loadedRoom = ans['rooms']?.toString();
+      if (_roomTypeOptions.contains(loadedRoom)) {
+        _selectedRoomType = loadedRoom;
+      }
+
+      final loadedSolarWillingness = ans['solarWillingness']?.toString();
+      if (_solarWillingnessOptions.contains(loadedSolarWillingness)) {
+        _selectedSolarWillingness = loadedSolarWillingness;
+      }
+
+      final loadedLandlordApproval = ans['landlordApproval']?.toString();
+      if (_landlordApprovalOptions.contains(loadedLandlordApproval)) {
+        _selectedLandlordApproval = loadedLandlordApproval;
+      }
+
       _kwInstalledController.text = ans['kwInstalled'] ?? '';
       _panelsWattageController.text = ans['panelsWattage'] ?? '';
       _inverterCapacityController.text = ans['inverterCapacity'] ?? '';
@@ -203,7 +240,7 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
     if (_addressController.text.trim().isNotEmpty) filledFields++;
 
     setState(() {
-      _completionRatio = filledFields / totalFields;
+      _completionRatio = (filledFields / totalFields).clamp(0.0, 1.0);
     });
   }
 
@@ -220,6 +257,8 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
       'landlordContact': _landlordContactController.text,
       'noOfPersons': _noOfPersonsController.text,
       'rooms': _selectedRoomType ?? '',
+      'solarWillingness': _selectedSolarWillingness ?? '',
+      'landlordApproval': _selectedLandlordApproval ?? '',
       'kwInstalled': _kwInstalledController.text,
       'panelsWattage': _panelsWattageController.text,
       'inverterCapacity': _inverterCapacityController.text,
@@ -292,12 +331,17 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
-    final bool isReadOnly = provider.isViewer;
+    final bool isGlobalViewer = provider.isViewer;
+
+    final bool isFormOne = widget.formNumber == 1;
+    final bool isEditable = !isGlobalViewer;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text('${widget.person.name} - Form ${widget.formNumber}'),
+        title: Text(
+          '${widget.person.name} - Form ${widget.formNumber} ${isFormOne ? "(Personal Profile)" : "(Appliances & Solar)"}',
+        ),
         backgroundColor: const Color(0xFF1E293B),
         foregroundColor: Colors.white,
       ),
@@ -326,9 +370,9 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  isReadOnly
-                                      ? 'Form Status: Read Only'
-                                      : 'Form ${widget.formNumber} Status',
+                                  isFormOne
+                                      ? 'Form 1: Personal Profile Details'
+                                      : 'Form 2: Electrical Load & Existing Solar',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: 16,
@@ -358,188 +402,282 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                     ),
                     const SizedBox(height: 24),
 
-                    _buildSectionHeader('1. Personal Profile Details'),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildTextField(
-                          _nameController,
-                          'Full Name',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _itsController,
-                          'ITS Number',
-                          isNumeric: true,
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _sfController,
-                          'SF Number',
-                          isNumeric: true,
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _contactController,
-                          'Contact Number',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _addressController,
-                          'Address',
-                          enabled: !isReadOnly,
-                        ),
-
-                        // House Type Dropdown
-                        SizedBox(
-                          width: 260,
-                          child: DropdownButtonFormField<String>(
-                            value: _selectedHouseType,
-                            decoration: InputDecoration(
-                              labelText: 'House Type',
-                              filled: true,
-                              fillColor: !isReadOnly
-                                  ? Colors.white
-                                  : Colors.grey.shade100,
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            items: _houseTypeOptions.map((type) {
-                              return DropdownMenuItem(
-                                value: type,
-                                child: Text(type),
-                              );
-                            }).toList(),
-                            onChanged: !isReadOnly
-                                ? (value) =>
-                                      setState(() => _selectedHouseType = value)
-                                : null,
+                    // ONLY SHOW PERSONAL PROFILE DETAILS IF THIS IS FORM 1
+                    if (isFormOne) ...[
+                      _buildSectionHeader('1. Personal Profile Details'),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          _buildTextField(
+                            _nameController,
+                            'Full Name',
+                            enabled: isEditable,
                           ),
-                        ),
+                          _buildTextField(
+                            _itsController,
+                            'ITS Number',
+                            isNumeric: true,
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _sfController,
+                            'SF Number',
+                            isNumeric: true,
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _contactController,
+                            'Contact Number',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _addressController,
+                            'Complete Address (Flat, Floor, Building, Area)',
+                            enabled: isEditable,
+                          ),
 
-                        // Separated Landlord Fields
-                        _buildTextField(
-                          _landlordNameController,
-                          'Landlord Name',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _landlordContactController,
-                          'Landlord Contact',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _noOfPersonsController,
-                          'No. of Persons',
-                          isNumeric: true,
-                          enabled: !isReadOnly,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    _buildSectionHeader('2. Electrical Appliances Load'),
-                    const SizedBox(height: 12),
-                    Card(
-                      elevation: 0,
-                      color: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(color: Colors.grey.shade300),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: _applianceWatts.keys.map((item) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 8.0,
+                          // House Type Dropdown
+                          SizedBox(
+                            width: 260,
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedHouseType,
+                              decoration: InputDecoration(
+                                labelText: 'House Type',
+                                filled: true,
+                                fillColor: isEditable
+                                    ? Colors.white
+                                    : Colors.grey.shade100,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('$item (${_applianceWatts[item]}W)'),
-                                  SizedBox(
-                                    width: 80,
-                                    child: TextField(
-                                      controller: _qtyControllers[item],
-                                      keyboardType: TextInputType.number,
-                                      enabled: !isReadOnly,
-                                      decoration: const InputDecoration(
-                                        isDense: true,
-                                        border: OutlineInputBorder(),
+                              items: _houseTypeOptions.map((type) {
+                                return DropdownMenuItem(
+                                  value: type,
+                                  child: Text(type),
+                                );
+                              }).toList(),
+                              onChanged: isEditable
+                                  ? (value) => setState(
+                                      () => _selectedHouseType = value,
+                                    )
+                                  : null,
+                            ),
+                          ),
+
+                          // Total Number of Rooms Dropdown
+                          SizedBox(
+                            width: 260,
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedRoomType,
+                              decoration: InputDecoration(
+                                labelText: 'Total Number of Rooms',
+                                filled: true,
+                                fillColor: isEditable
+                                    ? Colors.white
+                                    : Colors.grey.shade100,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              items: _roomTypeOptions.map((room) {
+                                return DropdownMenuItem(
+                                  value: room,
+                                  child: Text(room),
+                                );
+                              }).toList(),
+                              onChanged: isEditable
+                                  ? (value) => setState(
+                                      () => _selectedRoomType = value,
+                                    )
+                                  : null,
+                            ),
+                          ),
+
+                          _buildTextField(
+                            _noOfPersonsController,
+                            'Number of Family Members',
+                            isNumeric: true,
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _landlordNameController,
+                            'Landlord Name',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _landlordContactController,
+                            'Landlord Contact',
+                            enabled: isEditable,
+                          ),
+
+                          // Are you willing to install solar?
+                          SizedBox(
+                            width: 300,
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedSolarWillingness,
+                              decoration: InputDecoration(
+                                labelText: 'Are you willing to install solar?',
+                                filled: true,
+                                fillColor: isEditable
+                                    ? Colors.white
+                                    : Colors.grey.shade100,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              items: _solarWillingnessOptions.map((opt) {
+                                return DropdownMenuItem(
+                                  value: opt,
+                                  child: Text(opt),
+                                );
+                              }).toList(),
+                              onChanged: isEditable
+                                  ? (value) => setState(
+                                      () => _selectedSolarWillingness = value,
+                                    )
+                                  : null,
+                            ),
+                          ),
+
+                          // Is your landlord's approval required for rooftop solar installation?
+                          SizedBox(
+                            width: 380,
+                            child: DropdownButtonFormField<String>(
+                              value: _selectedLandlordApproval,
+                              decoration: InputDecoration(
+                                labelText:
+                                    "Is your landlord's approval required for rooftop solar?",
+                                filled: true,
+                                fillColor: isEditable
+                                    ? Colors.white
+                                    : Colors.grey.shade100,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              items: _landlordApprovalOptions.map((opt) {
+                                return DropdownMenuItem(
+                                  value: opt,
+                                  child: Text(opt),
+                                );
+                              }).toList(),
+                              onChanged: isEditable
+                                  ? (value) => setState(
+                                      () => _selectedLandlordApproval = value,
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+
+                    // IF FORM 2, SHOW APPLIANCES AND SOLAR SECTIONS
+                    if (!isFormOne) ...[
+                      _buildSectionHeader('2. Electrical Appliances Load'),
+                      const SizedBox(height: 12),
+                      Card(
+                        elevation: 0,
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: _applianceWatts.keys.map((item) {
+                              return Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 8.0,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('$item (${_applianceWatts[item]}W)'),
+                                    SizedBox(
+                                      width: 80,
+                                      child: TextField(
+                                        controller: _qtyControllers[item],
+                                        keyboardType: TextInputType.number,
+                                        enabled: isEditable,
+                                        decoration: const InputDecoration(
+                                          isDense: true,
+                                          border: OutlineInputBorder(),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }).toList(),
+                                  ],
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                    _buildSectionHeader('3. Existing Solar / Backup System'),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 16,
-                      runSpacing: 16,
-                      children: [
-                        _buildTextField(
-                          _kwInstalledController,
-                          'KW Installed',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _panelsWattageController,
-                          'Panels Wattage',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _inverterCapacityController,
-                          'Inverter Capacity',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _batteryTypeController,
-                          'Battery Type',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _normalUpsController,
-                          'Normal UPS Installed',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _existingInverterController,
-                          'Existing Inverter',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _existingBatteryController,
-                          'Existing Battery',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _filledByController,
-                          'Filled By Staff Name',
-                          enabled: !isReadOnly,
-                        ),
-                        _buildTextField(
-                          _remarksController,
-                          'Remarks',
-                          enabled: !isReadOnly,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
+                      _buildSectionHeader('3. Existing Solar / Backup System'),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 16,
+                        runSpacing: 16,
+                        children: [
+                          _buildTextField(
+                            _kwInstalledController,
+                            'KW Installed',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _panelsWattageController,
+                            'Panels Wattage',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _inverterCapacityController,
+                            'Inverter Capacity',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _batteryTypeController,
+                            'Battery Type',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _normalUpsController,
+                            'Normal UPS Installed',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _existingInverterController,
+                            'Existing Inverter',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _existingBatteryController,
+                            'Existing Battery',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _filledByController,
+                            'Filled By Staff Name',
+                            enabled: isEditable,
+                          ),
+                          _buildTextField(
+                            _remarksController,
+                            'Remarks',
+                            enabled: isEditable,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+                    ],
 
-                    if (!isReadOnly)
+                    if (isEditable)
                       Row(
                         children: [
                           Expanded(
