@@ -15,6 +15,7 @@ class PersonModel {
   final String landlordApproval;
   int completedFormCount;
   double fieldCompletionRatio;
+  static const int totalForms = 2;
 
   PersonModel({
     required this.id,
@@ -37,7 +38,7 @@ class PersonModel {
 
   double get progressPercentage {
     if (isComplete) return 1.0;
-    return (completedFormCount / 6.0).clamp(0.0, 1.0);
+    return (completedFormCount / totalForms.toDouble()).clamp(0.0, 1.0);
   }
 
   static int _parseInt(dynamic value) {

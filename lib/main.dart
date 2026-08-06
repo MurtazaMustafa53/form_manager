@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:form_manager/Controller/local_storage_controller.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
+import 'package:form_manager/Views/dashboard_view.dart';
 import 'package:form_manager/Views/login_view.dart';
 import 'package:form_manager/firebase_options.dart';
 import 'package:provider/provider.dart';
@@ -28,6 +29,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
+        if (provider.isAuthLoading) {
+          return const MaterialApp(
+            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+          );
+        }
         return MaterialApp(
           title: 'IBM SOLAR SURVEY',
           debugShowCheckedModeBanner: false,
@@ -35,7 +41,7 @@ class MyApp extends StatelessWidget {
           theme: ThemeData(
             colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
           ),
-          home: const LoginView(),
+          home: provider.isLoggedIn ? DashboardView() : LoginView(),
         );
       },
     );

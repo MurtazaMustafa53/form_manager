@@ -13,9 +13,11 @@ class AppProvider extends ChangeNotifier {
 
   List<PersonModel> _people = [];
   bool _isLoading = true;
+  bool _isAuthLoading = true;
   StreamSubscription<List<PersonModel>>? _peopleSubscription;
   List<PersonModel> get people => _people;
   bool get isLoading => _isLoading;
+  bool get isAuthLoading => _isAuthLoading;
 
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
@@ -50,6 +52,7 @@ class AppProvider extends ChangeNotifier {
         email: savedEmail,
         role: role,
       );
+      _isAuthLoading = false;
       notifyListeners();
     }
   }

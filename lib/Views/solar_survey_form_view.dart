@@ -64,7 +64,7 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   final _existingInverterController = TextEditingController();
   final _existingBatteryController = TextEditingController();
 
-  // New fields for Form 2
+  // Finance Details
   final _financeByMuminController = TextEditingController();
   String? _selectedFinanceExpectation;
   final List<String> _financeExpectationOptions = ['Yes', 'No'];
@@ -72,7 +72,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
   final _remarksController = TextEditingController();
   final _filledByController = TextEditingController();
 
-  // Default wattage values mapping, now mutable so they can be edited per session/form
   final Map<String, int> _applianceWatts = {
     'Fan': 80,
     'LED Bulb': 12,
@@ -615,7 +614,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                           padding: const EdgeInsets.all(16.0),
                           child: Column(
                             children: [
-                              // Table Header
                               const Row(
                                 children: [
                                   Expanded(
@@ -788,7 +786,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                             enabled: isEditable,
                           ),
 
-                          // Finance as per expectation Dropdown
                           SizedBox(
                             width: 260,
                             child: DropdownButtonFormField<String>(
@@ -826,7 +823,6 @@ class _SolarSurveyFormViewState extends State<SolarSurveyFormView> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Remarks Box set to full width
                       SizedBox(
                         width: double.infinity,
                         child: TextFormField(

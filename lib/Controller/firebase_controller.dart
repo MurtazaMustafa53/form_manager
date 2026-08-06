@@ -31,7 +31,7 @@ class FirebaseController {
     final Map<String, dynamic> ans = formData.answers;
 
     final Map<String, dynamic> personUpdates = {
-      'completedFormCount': FieldValue.increment(1),
+      'completedFormCount': formData.formNumber.clamp(1, 2),
       'fieldCompletionRatio': ans['completionRatio'] ?? 1.0,
       'name': (ans['name'] ?? '').toString().trim(),
       'contact': (ans['contact'] ?? '').toString().trim(),

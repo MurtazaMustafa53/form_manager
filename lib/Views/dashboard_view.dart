@@ -267,9 +267,16 @@ class _DashboardViewState extends State<DashboardView> {
 
           final people = provider.people;
           final totalProfiles = people.length;
-          final completedForms = people.where((p) => p.isComplete).length;
-          final overallProgress = totalProfiles > 0
-              ? (completedForms / totalProfiles)
+
+          // Calculate overall forms progress dynamically
+          final int totalRequiredForms = totalProfiles * PersonModel.totalForms;
+          final int totalFormsSubmitted = people.fold<int>(
+            0,
+            (sum, p) =>
+                sum + p.completedFormCount.clamp(0, PersonModel.totalForms),
+          );
+          final double overallProgress = totalRequiredForms > 0
+              ? (totalFormsSubmitted / totalRequiredForms)
               : 0.0;
           final pendingCount = people.where((p) => !p.isComplete).length;
           final displayedPeople = _getFilteredAndSortedPeople(people);
@@ -279,7 +286,7 @@ class _DashboardViewState extends State<DashboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 3 Styled Metric Cards exactly matching the screenshot layout
+                // 3 Metric Cards Row
                 Row(
                   children: [
                     Expanded(
@@ -292,10 +299,10 @@ class _DashboardViewState extends State<DashboardView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
+                                Text(
                                   'Total Profiles',
                                   style: TextStyle(
                                     color: Colors.white70,
@@ -303,7 +310,7 @@ class _DashboardViewState extends State<DashboardView> {
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.people,
                                   color: Colors.white70,
                                   size: 20,
@@ -363,7 +370,7 @@ class _DashboardViewState extends State<DashboardView> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              '$completedForms/$totalProfiles',
+                              '$totalFormsSubmitted/$totalRequiredForms',
                               style: const TextStyle(
                                 color: Color(0xFF1E293B),
                                 fontSize: 32,
@@ -393,18 +400,18 @@ class _DashboardViewState extends State<DashboardView> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'Pending Forms',
+                                Text(
+                                  'Pending Profiles',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const Icon(
+                                Icon(
                                   Icons.schedule,
                                   color: Colors.white70,
                                   size: 20,
@@ -477,7 +484,7 @@ class _DashboardViewState extends State<DashboardView> {
                             ),
                           ),
                           Text(
-                            '$completedForms of $totalProfiles forms submitted',
+                            '$totalFormsSubmitted of $totalRequiredForms forms submitted',
                             style: TextStyle(
                               color: Colors.grey.shade600,
                               fontSize: 12,

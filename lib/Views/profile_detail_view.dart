@@ -9,10 +9,9 @@ class ProfileDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int percentage = (person.progressPercentage * 100).toInt();
-    final int completedCount = person.isComplete
-        ? 2
-        : (person.progressPercentage > 0 ? 1 : 0);
+    final int completedCount = person.completedFormCount.clamp(0, 2);
+    final double progressRatio = person.progressPercentage;
+    final int percentage = (progressRatio * 100).toInt();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
@@ -112,7 +111,7 @@ class ProfileDetailView extends StatelessWidget {
                               width: 50,
                               height: 50,
                               child: CircularProgressIndicator(
-                                value: person.progressPercentage,
+                                value: progressRatio,
                                 backgroundColor: const Color(0xFFE2E8F0),
                                 color: const Color(0xFF10B981),
                                 strokeWidth: 6,
@@ -194,7 +193,7 @@ class ProfileDetailView extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(4),
                       child: LinearProgressIndicator(
-                        value: person.progressPercentage,
+                        value: progressRatio,
                         minHeight: 10,
                         backgroundColor: const Color(0xFFE2E8F0),
                         color: const Color(0xFF10B981),
@@ -246,8 +245,7 @@ class ProfileDetailView extends StatelessWidget {
                       context,
                       formNumber: 1,
                       formTitle: 'Form 1: Personal Profile Details',
-                      isCompleted:
-                          person.isComplete || person.progressPercentage >= 0.5,
+                      isCompleted: person.completedFormCount >= 1,
                     ),
                     const Divider(height: 24),
                     _buildFormChecklistItem(
@@ -255,7 +253,7 @@ class ProfileDetailView extends StatelessWidget {
                       formNumber: 2,
                       formTitle:
                           'Form 2: Electrical Appliances & Existing Solar',
-                      isCompleted: person.isComplete,
+                      isCompleted: person.completedFormCount >= 2,
                     ),
                   ],
                 ),
