@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:form_manager/Model/Form%20Mappers/form_mapper_registry.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Model/person_model.dart';
 
@@ -25,26 +26,18 @@ class FirebaseController {
   }
 
   Future<void> submitForm(FormDataModel formData) async {
+    // 1. Save specific form answer document
     final String docid = '${formData.personId}_form_${formData.formNumber}';
     await _formsRef.doc(docid).set(formData.toFirestorMap());
 
-    final Map<String, dynamic> ans = formData.answers;
+    // 2. Map payload via Model layer registry
+    final Map<String, dynamic> personUpdates =
+        FormMapperRegistry.getPersonUpdates(formData);
 
-    final Map<String, dynamic> personUpdates = {
-      'completedFormCount': formData.formNumber.clamp(1, 2),
-      'fieldCompletionRatio': ans['completionRatio'] ?? 1.0,
-      'name': (ans['name'] ?? '').toString().trim(),
-      'contact': (ans['contact'] ?? '').toString().trim(),
-      'address': (ans['address'] ?? '').toString().trim(),
-      'houseType': (ans['houseType'] ?? '').toString().trim(),
-      'landlordNameAndContact': (ans['landlordName'] ?? '').toString().trim(),
-      'noOfPersons': int.tryParse((ans['noOfPersons'] ?? '0').toString()) ?? 0,
-      'rooms': (ans['rooms'] ?? '').toString().trim(),
-      'solarWillingness': (ans['solarWillingness'] ?? '').toString().trim(),
-      'landlordApproval': (ans['landlordApproval'] ?? '').toString().trim(),
-    };
-
-    await _peopleRef.doc(formData.personId).update(personUpdates);
+    // 3. Update summary fields on parent Person
+    if (personUpdates.isNotEmpty) {
+      await _peopleRef.doc(formData.personId).update(personUpdates);
+    }
   }
 
   Future<FormDataModel?> getSubmittedForm(

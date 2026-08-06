@@ -1,15 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:form_manager/Model/person_model.dart';
-import 'package:form_manager/Views/solar_survey_form_view.dart';
+import 'package:form_manager/Views/Forms/form1_view.dart';
+import 'package:form_manager/Views/Forms/form2_view.dart';
+import 'package:form_manager/Views/Forms/form3_view.dart';
 
 class ProfileDetailView extends StatelessWidget {
   final PersonModel person;
 
   const ProfileDetailView({super.key, required this.person});
 
+  void _navigateToForm(BuildContext context, int formNumber) {
+    Widget targetForm;
+
+    switch (formNumber) {
+      case 1:
+        targetForm = Form1View(person: person);
+        break;
+      case 2:
+        targetForm = Form2View(person: person);
+        break;
+      case 3:
+      default:
+        targetForm = Form3View(person: person);
+        break;
+    }
+
+    Navigator.push(context, MaterialPageRoute(builder: (_) => targetForm));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final int completedCount = person.completedFormCount.clamp(0, 2);
+    final int completedCount = person.completedFormCount.clamp(0, 3);
     final double progressRatio = person.progressPercentage;
     final int percentage = (progressRatio * 100).toInt();
 
@@ -131,7 +152,7 @@ class ProfileDetailView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '$completedCount of 2',
+                              '$completedCount of 3',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -252,8 +273,15 @@ class ProfileDetailView extends StatelessWidget {
                       context,
                       formNumber: 2,
                       formTitle:
-                          'Form 2: Electrical Appliances & Existing Solar',
+                          'Form 2: Electrical Appliances & Financial Expectations',
                       isCompleted: person.completedFormCount >= 2,
+                    ),
+                    const Divider(height: 24),
+                    _buildFormChecklistItem(
+                      context,
+                      formNumber: 3,
+                      formTitle: 'Form 3: Solar Technical Audit',
+                      isCompleted: person.completedFormCount >= 3,
                     ),
                   ],
                 ),
@@ -336,17 +364,7 @@ class ProfileDetailView extends StatelessWidget {
                 isCompleted ? Icons.edit : Icons.arrow_forward,
                 size: 16,
               ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SolarSurveyFormView(
-                      person: person,
-                      formNumber: formNumber,
-                    ),
-                  ),
-                );
-              },
+              onPressed: () => _navigateToForm(context, formNumber),
             ),
           ],
         ),

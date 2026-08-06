@@ -17,7 +17,7 @@ class _DashboardViewState extends State<DashboardView> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatusFilter = 'All';
 
-  // Active Chart Stage Filter: null = All, 1 = Form 1, 2 = Form 2 Stage, 3 = Form 3 Stage
+  // Active Chart Stage Filter: null = All, 1 = Form 1 Only (33%), 2 = Form 1 & 2 (66%), 3 = All Forms (100%), 4 = Fully Completed Cards
   int? _activeFormFilter;
 
   int _sortColumnIndex = 1;
@@ -136,14 +136,17 @@ class _DashboardViewState extends State<DashboardView> {
     final filtered = people.where((person) {
       // 1. Chart Stage Funnel Filter Logic
       if (_activeFormFilter != null) {
-        if (_activeFormFilter == 1 && person.completedFormCount < 1) {
-          return false; // Profiles that filled Form 1
-        } else if (_activeFormFilter == 2 &&
-            !(person.completedFormCount == 1)) {
-          return false; // Profiles that filled ONLY Form 1 (pending Form 2)
-        } else if (_activeFormFilter == 3 &&
-            !(person.completedFormCount == 2)) {
-          return false; // Profiles that filled Form 2 (pending Form 3)
+        if (_activeFormFilter == 1) {
+          // Exactly Form 1 filled (Completed count == 1, or approx 33%)
+          if (person.completedFormCount != 1) return false;
+        } else if (_activeFormFilter == 2) {
+          // Exactly Form 1 & 2 filled (Completed count == 2, or approx 66%)
+          if (person.completedFormCount != 2) return false;
+        } else if (_activeFormFilter == 3) {
+          // Fully completed all forms (100%)
+          if (!person.isComplete) return false;
+        } else if (_activeFormFilter == 4) {
+          if (!person.isComplete) return false;
         }
       }
 
@@ -178,7 +181,7 @@ class _DashboardViewState extends State<DashboardView> {
           comparison = a.its.compareTo(b.its);
           break;
         case 3:
-          comparison = a.sfNo.compareTo(b.sfNo);
+          comparison = a.sfNo!.compareTo(b.sfNo!);
           break;
         case 4:
           comparison = a.progressPercentage.compareTo(b.progressPercentage);
@@ -297,17 +300,29 @@ class _DashboardViewState extends State<DashboardView> {
               ? (totalFormsSubmitted / totalRequiredForms)
               : 0.0;
           final pendingCount = people.where((p) => !p.isComplete).length;
+          final completedProfilesCount = people
+              .where((p) => p.isComplete)
+              .length;
           final displayedPeople = _getFilteredAndSortedPeople(people);
 
-          // Cascading Form Completion Counts
-          final form1Count = people
+          // Specific Stage Counts & Baselines for "X/Y" display:
+          // Card 1 (Form 1 Only -> 33%): Count of profiles with exactly 1 form out of total profiles
+          final form1OnlyCount = people
+              .where((p) => p.completedFormCount == 1)
+              .length;
+
+          // Card 2 (Forms 1 & 2 -> 66%): Count of profiles with exactly 2 forms out of profiles having at least 1 form
+          final form1And2Count = people
+              .where((p) => p.completedFormCount == 2)
+              .length;
+          final form1TotalBase = people
               .where((p) => p.completedFormCount >= 1)
               .length;
-          final form2Count = people
+
+          // Card 3 (All Completed -> 100%): Count of fully completed profiles out of profiles having at least 2 forms
+          final allCompletedCount = people.where((p) => p.isComplete).length;
+          final form2TotalBase = people
               .where((p) => p.completedFormCount >= 2)
-              .length;
-          final form3Count = people
-              .where((p) => p.completedFormCount >= 3)
               .length;
 
           return SingleChildScrollView(
@@ -369,52 +384,74 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey.shade200),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          onTap: () {
+                            setState(() {
+                              if (_activeFormFilter == 4) {
+                                _activeFormFilter = null;
+                              } else {
+                                _activeFormFilter = 4;
+                              }
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: _activeFormFilter == 4
+                                    ? const Color(0xFF10B981)
+                                    : Colors.grey.shade200,
+                                width: _activeFormFilter == 4 ? 2.0 : 1.0,
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'Forms Submitted',
-                                  style: TextStyle(
-                                    color: Colors.grey,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Forms Submitted',
+                                      style: TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.assignment_turned_in_outlined,
+                                      color: Colors.grey.shade400,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  '$completedProfilesCount/$totalProfiles',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1E293B),
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                Icon(
-                                  Icons.assignment_turned_in_outlined,
-                                  color: Colors.grey.shade400,
-                                  size: 20,
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Fully Completed Profiles',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 12),
-                            Text(
-                              '$totalFormsSubmitted/$totalRequiredForms',
-                              style: const TextStyle(
-                                color: Color(0xFF1E293B),
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${(overallProgress * 100).toInt()}% Overall Progress',
-                              style: TextStyle(
-                                color: Colors.grey.shade600,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -557,7 +594,7 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 const SizedBox(height: 24),
 
-                // Cascading Form Completion Interactive Chart Cards
+                // Interactive Progress Cards (Form 1 Only, Form 1 & 2, All Completed with X/Y format)
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -592,12 +629,12 @@ class _DashboardViewState extends State<DashboardView> {
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          // Form 1 Chart: Filter profiles having filled Form 1
+                          // Card 1: Form 1 Filled (~33% Completed)
                           Expanded(
                             child: _buildInteractiveCascadingCard(
                               stageNumber: 1,
-                              title: 'Form 1 (Personal)',
-                              completed: form1Count,
+                              title: 'Form 1 Filled (33%)',
+                              completed: form1OnlyCount,
                               total: totalProfiles,
                               subtitle: 'Out of $totalProfiles total profiles',
                               color: const Color(0xFF2563EB),
@@ -605,27 +642,29 @@ class _DashboardViewState extends State<DashboardView> {
                           ),
                           const SizedBox(width: 16),
 
-                          // Form 2 Chart: Filter profiles that filled Form 1 (Pending Form 2)
+                          // Card 2: Form 1 & Form 2 Filled (~66% Completed)
                           Expanded(
                             child: _buildInteractiveCascadingCard(
                               stageNumber: 2,
-                              title: 'Form 2 (Appliances)',
-                              completed: form2Count,
-                              total: form1Count,
-                              subtitle: 'Out of $form1Count Form 1 completed',
+                              title: 'Forms 1 & 2 Filled (66%)',
+                              completed: form1And2Count,
+                              total: form1TotalBase,
+                              subtitle:
+                                  'Out of $form1TotalBase Form 1 completed',
                               color: const Color(0xFF10B981),
                             ),
                           ),
                           const SizedBox(width: 16),
 
-                          // Form 3 Chart: Filter profiles that filled Form 2 (Pending Form 3)
+                          // Card 3: All Forms Completed (100% Completed)
                           Expanded(
                             child: _buildInteractiveCascadingCard(
                               stageNumber: 3,
-                              title: 'Form 3 (Surveys)',
-                              completed: form3Count,
-                              total: form2Count,
-                              subtitle: 'Out of $form2Count Form 2 completed',
+                              title: 'All Forms Completed (100%)',
+                              completed: allCompletedCount,
+                              total: form2TotalBase,
+                              subtitle:
+                                  'Out of $form2TotalBase Form 2 completed',
                               color: const Color(0xFF8B5CF6),
                             ),
                           ),
@@ -655,7 +694,13 @@ class _DashboardViewState extends State<DashboardView> {
                               Text(
                                 _activeFormFilter == null
                                     ? 'Client Survey List'
-                                    : 'Filtered List: Form $_activeFormFilter Stage',
+                                    : (_activeFormFilter == 1
+                                          ? 'Filtered List: Form 1 Filled (33%)'
+                                          : _activeFormFilter == 2
+                                          ? 'Filtered List: Forms 1 & 2 Filled (66%)'
+                                          : _activeFormFilter == 3
+                                          ? 'Filtered List: All Forms Completed (100%)'
+                                          : 'Filtered List: Fully Completed Profiles'),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -772,7 +817,7 @@ class _DashboardViewState extends State<DashboardView> {
                           padding: EdgeInsets.symmetric(vertical: 32.0),
                           child: Center(
                             child: Text(
-                              'No profiles match the current chart stage filter.',
+                              'No profiles match the current filter criteria.',
                               style: TextStyle(color: Colors.grey),
                             ),
                           ),

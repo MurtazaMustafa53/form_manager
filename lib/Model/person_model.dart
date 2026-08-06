@@ -4,114 +4,141 @@ class PersonModel {
   final String id;
   final String name;
   final int its;
-  final int sfNo;
+  final int? sfNo;
   final String contact;
-  final String address;
-  final String houseType;
-  final String landlordNameAndContact;
-  final int noOfPersons;
-  final String rooms;
-  final String solarWillingness;
-  final String landlordApproval;
-  int completedFormCount;
-  double fieldCompletionRatio;
-  static const int totalForms = 2;
+
+  // Form 1 Fields
+  final String? address;
+  final bool? willingToSolar;
+  final bool? landlordApproval;
+
+  // Form 2 Fields
+  final double? totalWattage;
+  final String? financeByMomin;
+  final String? financeAsPerExpectation;
+
+  // Completion Tracking
+  final int completedFormCount;
+
+  static const int totalForms = 3;
 
   PersonModel({
     required this.id,
     required this.name,
     required this.its,
-    required this.sfNo,
-    this.contact = '',
-    this.address = '',
-    this.houseType = '',
-    this.landlordNameAndContact = '',
-    this.noOfPersons = 0,
-    this.rooms = '',
-    this.solarWillingness = '',
-    this.landlordApproval = '',
+    this.sfNo,
+    required this.contact,
+    this.address,
+    this.willingToSolar,
+    this.landlordApproval,
+    this.totalWattage,
+    this.financeByMomin,
+    this.financeAsPerExpectation,
     this.completedFormCount = 0,
-    this.fieldCompletionRatio = 0.0,
   });
 
-  bool get isComplete => completedFormCount >= 6;
+  bool get isComplete => completedFormCount >= totalForms;
 
-  double get progressPercentage {
-    if (isComplete) return 1.0;
-    return (completedFormCount / totalForms.toDouble()).clamp(0.0, 1.0);
-  }
+  double get progressPercentage =>
+      (completedFormCount / totalForms).clamp(0.0, 1.0);
 
-  static int _parseInt(dynamic value) {
-    if (value == null) return 0;
-    if (value is int) return value;
-    if (value is double) return value.toInt();
-    if (value is String) return int.tryParse(value) ?? 0;
-    return 0;
-  }
-
-  static double _parseDouble(dynamic value) {
-    if (value == null) return 0.0;
-    if (value is double) return value;
-    if (value is int) return value.toDouble();
-    if (value is String) return double.tryParse(value) ?? 0.0;
-    return 0.0;
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'its': its,
-      'sfNo': sfNo,
-      'contact': contact,
-      'address': address,
-      'houseType': houseType,
-      'landlordNameAndContact': landlordNameAndContact,
-      'noOfPersons': noOfPersons,
-      'rooms': rooms,
-      'solarWillingness': solarWillingness,
-      'landlordApproval': landlordApproval,
-      'completedFormCount': completedFormCount,
-      'fieldCompletionRatio': fieldCompletionRatio,
-    };
-  }
-
-  factory PersonModel.fromMap(Map<String, dynamic> map) {
+  PersonModel copyWith({
+    String? id,
+    String? name,
+    int? its,
+    int? sfNo,
+    String? contact,
+    String? address,
+    bool? willingToSolar,
+    bool? landlordApproval,
+    double? totalWattage,
+    String? financeByMomin,
+    String? financeAsPerExpectation,
+    int? completedFormCount,
+  }) {
     return PersonModel(
-      id: map['id']?.toString() ?? '',
-      name: map['name']?.toString() ?? '',
-      its: _parseInt(map['its']),
-      sfNo: _parseInt(map['sfNo']),
-      contact: map['contact']?.toString() ?? '',
-      address: map['address']?.toString() ?? '',
-      houseType: map['houseType']?.toString() ?? '',
-      landlordNameAndContact: map['landlordNameAndContact']?.toString() ?? '',
-      noOfPersons: _parseInt(map['noOfPersons']),
-      rooms: map['rooms']?.toString() ?? '',
-      solarWillingness: map['solarWillingness']?.toString() ?? '',
-      landlordApproval: map['landlordApproval']?.toString() ?? '',
-      completedFormCount: _parseInt(map['completedFormCount']),
-      fieldCompletionRatio: _parseDouble(map['fieldCompletionRatio']),
+      id: id ?? this.id,
+      name: name ?? this.name,
+      its: its ?? this.its,
+      sfNo: sfNo ?? this.sfNo,
+      contact: contact ?? this.contact,
+      address: address ?? this.address,
+      willingToSolar: willingToSolar ?? this.willingToSolar,
+      landlordApproval: landlordApproval ?? this.landlordApproval,
+      totalWattage: totalWattage ?? this.totalWattage,
+      financeByMomin: financeByMomin ?? this.financeByMomin,
+      financeAsPerExpectation:
+          financeAsPerExpectation ?? this.financeAsPerExpectation,
+      completedFormCount: completedFormCount ?? this.completedFormCount,
     );
   }
 
   factory PersonModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
+
+    // Safe parser for bool fields stored as String, int, or bool in Firestore
+    bool? _parseBool(dynamic value) {
+      if (value == null) return null;
+      if (value is bool) return value;
+      if (value is String) {
+        final lower = value.trim().toLowerCase();
+        if (lower == 'true' || lower == 'yes' || lower == '1') return true;
+        if (lower == 'false' || lower == 'no' || lower == '0') return false;
+      }
+      if (value is num) return value == 1;
+      return null;
+    }
+
+    // Safe parser for int fields stored as String or num
+    int _parseInt(dynamic value) {
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value) ?? 0;
+      return 0;
+    }
+
+    // Safe parser for optional int fields
+    int? _parseNullableInt(dynamic value) {
+      if (value is num) return value.toInt();
+      if (value is String) return int.tryParse(value);
+      return null;
+    }
+
+    // Safe parser for double fields stored as String or num
+    double? _parseDouble(dynamic value) {
+      if (value is num) return value.toDouble();
+      if (value is String) return double.tryParse(value);
+      return null;
+    }
+
     return PersonModel(
       id: doc.id,
       name: data['name']?.toString() ?? '',
       its: _parseInt(data['its']),
-      sfNo: _parseInt(data['sfNo']),
+      sfNo: _parseNullableInt(data['sfNo']),
       contact: data['contact']?.toString() ?? '',
-      address: data['address']?.toString() ?? '',
-      houseType: data['houseType']?.toString() ?? '',
-      landlordNameAndContact: data['landlordNameAndContact']?.toString() ?? '',
-      noOfPersons: _parseInt(data['noOfPersons']),
-      rooms: data['rooms']?.toString() ?? '',
-      solarWillingness: data['solarWillingness']?.toString() ?? '',
-      landlordApproval: data['landlordApproval']?.toString() ?? '',
+      address: data['address']?.toString(),
+      willingToSolar: _parseBool(data['willingToSolar']),
+      landlordApproval: _parseBool(data['landlordApproval']),
+      totalWattage: _parseDouble(data['totalWattage']),
+      financeByMomin: data['financeByMomin']?.toString(),
+      financeAsPerExpectation: data['financeAsPerExpectation']?.toString(),
       completedFormCount: _parseInt(data['completedFormCount']),
-      fieldCompletionRatio: _parseDouble(data['fieldCompletionRatio']),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'its': its,
+      'sfNo': sfNo,
+      'contact': contact,
+      'address': address,
+      'willingToSolar': willingToSolar,
+      'landlordApproval': landlordApproval,
+      'totalWattage': totalWattage,
+      'financeByMomin': financeByMomin,
+      'financeAsPerExpectation': financeAsPerExpectation,
+      'completedFormCount': completedFormCount,
+    };
   }
 }

@@ -15,6 +15,7 @@ class AppProvider extends ChangeNotifier {
   bool _isLoading = true;
   bool _isAuthLoading = true;
   StreamSubscription<List<PersonModel>>? _peopleSubscription;
+
   List<PersonModel> get people => _people;
   bool get isLoading => _isLoading;
   bool get isAuthLoading => _isAuthLoading;
@@ -52,9 +53,9 @@ class AppProvider extends ChangeNotifier {
         email: savedEmail,
         role: role,
       );
-      _isAuthLoading = false;
-      notifyListeners();
     }
+    _isAuthLoading = false;
+    notifyListeners();
   }
 
   Future<bool> login(String email, String password) async {
@@ -106,11 +107,20 @@ class AppProvider extends ChangeNotifier {
     });
   }
 
+  // --- FORM 3 & DATA PERSISTENCE METHODS ---
+
+  /// Save draft locally via local storage controller
   Future<void> saveDraft(FormDataModel formData) async {
     await LocalStorageController.saveFormDraft(formData);
     notifyListeners();
   }
 
+  /// Load existing local draft if present
+  FormDataModel? loadDraft(String personId, int formNumber) {
+    return LocalStorageController.getFormDraft(personId, formNumber);
+  }
+
+  /// Retrieve form submitted directly to Firestore
   Future<FormDataModel?> getSubmittedForm(
     String personId,
     int formNumber,
@@ -118,10 +128,7 @@ class AppProvider extends ChangeNotifier {
     return await _firebaseController.getSubmittedForm(personId, formNumber);
   }
 
-  FormDataModel? loadDraft(String personId, int formNumber) {
-    return LocalStorageController.getFormDraft(personId, formNumber);
-  }
-
+  /// Submit Form to Firebase and clear the local draft cache
   Future<void> submitFormToFirebase(FormDataModel formData) async {
     await _firebaseController.submitForm(formData);
     await LocalStorageController.clearFormDraft(
@@ -130,6 +137,8 @@ class AppProvider extends ChangeNotifier {
     );
     notifyListeners();
   }
+
+  // --- MANAGEMENT ACTIONS ---
 
   // Add Profile (Dev Only)
   Future<void> addNewPerson(PersonModel newPerson) async {
@@ -149,8 +158,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Type 1: Import Profiles from Excel (Dev Only)
-  // Type 1: Import Profiles from Excel (Dev Only)
+  // Import Profiles from Excel (Dev Only)
   Future<void> importProfilesFromExcel() async {
     if (!isDev) {
       throw Exception('Unauthorized: Log in as Dev to import profiles.');
@@ -159,7 +167,6 @@ class AppProvider extends ChangeNotifier {
     final rows = await ExcelService.pickAndReadExcel();
     if (rows.isEmpty) return;
 
-    // Expecting columns: [Name, ITS, SF No, Contact]
     for (int i = 1; i < rows.length; i++) {
       var row = rows[i];
       if (row.isEmpty || row[0]?.value == null) continue;
@@ -182,8 +189,6 @@ class AppProvider extends ChangeNotifier {
     }
     notifyListeners();
   }
-
-  // Type 2: Form 1 Import from Excel (Dev & Admin)
 
   @override
   void dispose() {
