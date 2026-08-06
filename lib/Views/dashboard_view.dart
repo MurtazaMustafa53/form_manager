@@ -3,6 +3,7 @@ import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/person_model.dart';
 import 'package:form_manager/Views/login_view.dart';
 import 'package:form_manager/Views/profile_detail_view.dart';
+import 'package:form_manager/Views/summary_dashboard_view.dart';
 import 'package:provider/provider.dart';
 
 class DashboardView extends StatefulWidget {
@@ -15,6 +16,9 @@ class DashboardView extends StatefulWidget {
 class _DashboardViewState extends State<DashboardView> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatusFilter = 'All';
+
+  // Active Chart Stage Filter: null = All, 1 = Form 1, 2 = Form 2 Stage, 3 = Form 3 Stage
+  int? _activeFormFilter;
 
   int _sortColumnIndex = 1;
   bool _isAscending = true;
@@ -130,12 +134,27 @@ class _DashboardViewState extends State<DashboardView> {
     final query = _searchController.text.trim().toLowerCase();
 
     final filtered = people.where((person) {
+      // 1. Chart Stage Funnel Filter Logic
+      if (_activeFormFilter != null) {
+        if (_activeFormFilter == 1 && person.completedFormCount < 1) {
+          return false; // Profiles that filled Form 1
+        } else if (_activeFormFilter == 2 &&
+            !(person.completedFormCount == 1)) {
+          return false; // Profiles that filled ONLY Form 1 (pending Form 2)
+        } else if (_activeFormFilter == 3 &&
+            !(person.completedFormCount == 2)) {
+          return false; // Profiles that filled Form 2 (pending Form 3)
+        }
+      }
+
+      // 2. Search Field Filter
       final matchesName = person.name.toLowerCase().contains(query);
       final matchesIts = person.its.toString().contains(query);
       final matchesSf = person.sfNo.toString().contains(query);
       final matchesSearch =
           query.isEmpty || matchesName || matchesIts || matchesSf;
 
+      // 3. Status Dropdown Filter
       bool matchesStatus = true;
       if (_selectedStatusFilter == 'Pending') {
         matchesStatus = !person.isComplete;
@@ -268,7 +287,6 @@ class _DashboardViewState extends State<DashboardView> {
           final people = provider.people;
           final totalProfiles = people.length;
 
-          // Calculate overall forms progress dynamically
           final int totalRequiredForms = totalProfiles * PersonModel.totalForms;
           final int totalFormsSubmitted = people.fold<int>(
             0,
@@ -281,12 +299,23 @@ class _DashboardViewState extends State<DashboardView> {
           final pendingCount = people.where((p) => !p.isComplete).length;
           final displayedPeople = _getFilteredAndSortedPeople(people);
 
+          // Cascading Form Completion Counts
+          final form1Count = people
+              .where((p) => p.completedFormCount >= 1)
+              .length;
+          final form2Count = people
+              .where((p) => p.completedFormCount >= 2)
+              .length;
+          final form3Count = people
+              .where((p) => p.completedFormCount >= 3)
+              .length;
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 3 Metric Cards Row
+                // 4 Metric Cards Row
                 Row(
                   children: [
                     Expanded(
@@ -439,11 +468,96 @@ class _DashboardViewState extends State<DashboardView> {
                         ),
                       ),
                     ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const SummaryDashboardView(),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF10B981,
+                                  ).withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      'Survey Analytics',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Icon(
+                                      Icons.analytics_outlined,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12),
+                                Text(
+                                  'Summary',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'View Breakdown',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    SizedBox(width: 4),
+                                    Icon(
+                                      Icons.arrow_forward_ios,
+                                      color: Colors.white,
+                                      size: 10,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 24),
 
-                // Survey Completion Progress Tracker Section
+                // Cascading Form Completion Interactive Chart Cards
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -454,40 +568,65 @@ class _DashboardViewState extends State<DashboardView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Survey Completion Progress',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: overallProgress,
-                          minHeight: 8,
-                          backgroundColor: const Color(0xFFE2E8F0),
-                          color: const Color(0xFF2563EB),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            '${(overallProgress * 100).toInt()}%',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
+                          if (_activeFormFilter != null)
+                            OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: const Color(0xFF2563EB),
+                                side: const BorderSide(
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                              icon: const Icon(Icons.clear, size: 16),
+                              label: const Text('Show All Profiles'),
+                              onPressed: () {
+                                setState(() {
+                                  _activeFormFilter = null;
+                                });
+                              },
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          // Form 1 Chart: Filter profiles having filled Form 1
+                          Expanded(
+                            child: _buildInteractiveCascadingCard(
+                              stageNumber: 1,
+                              title: 'Form 1 (Personal)',
+                              completed: form1Count,
+                              total: totalProfiles,
+                              subtitle: 'Out of $totalProfiles total profiles',
+                              color: const Color(0xFF2563EB),
                             ),
                           ),
-                          Text(
-                            '$totalFormsSubmitted of $totalRequiredForms forms submitted',
-                            style: TextStyle(
-                              color: Colors.grey.shade600,
-                              fontSize: 12,
+                          const SizedBox(width: 16),
+
+                          // Form 2 Chart: Filter profiles that filled Form 1 (Pending Form 2)
+                          Expanded(
+                            child: _buildInteractiveCascadingCard(
+                              stageNumber: 2,
+                              title: 'Form 2 (Appliances)',
+                              completed: form2Count,
+                              total: form1Count,
+                              subtitle: 'Out of $form1Count Form 1 completed',
+                              color: const Color(0xFF10B981),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+
+                          // Form 3 Chart: Filter profiles that filled Form 2 (Pending Form 3)
+                          Expanded(
+                            child: _buildInteractiveCascadingCard(
+                              stageNumber: 3,
+                              title: 'Form 3 (Surveys)',
+                              completed: form3Count,
+                              total: form2Count,
+                              subtitle: 'Out of $form2Count Form 2 completed',
+                              color: const Color(0xFF8B5CF6),
                             ),
                           ),
                         ],
@@ -497,7 +636,7 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 const SizedBox(height: 24),
 
-                // Client Survey List Card Section
+                // Client Survey List Section
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -511,13 +650,38 @@ class _DashboardViewState extends State<DashboardView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
-                            'Client Survey List',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: Color(0xFF1E293B),
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                _activeFormFilter == null
+                                    ? 'Client Survey List'
+                                    : 'Filtered List: Form $_activeFormFilter Stage',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${displayedPeople.length} Profiles',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF2563EB),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           Row(
                             children: [
@@ -608,7 +772,7 @@ class _DashboardViewState extends State<DashboardView> {
                           padding: EdgeInsets.symmetric(vertical: 32.0),
                           child: Center(
                             child: Text(
-                              'No profiles match your criteria.',
+                              'No profiles match the current chart stage filter.',
                               style: TextStyle(color: Colors.grey),
                             ),
                           ),
@@ -666,6 +830,111 @@ class _DashboardViewState extends State<DashboardView> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // Interactive Cascading Card Widget
+  Widget _buildInteractiveCascadingCard({
+    required int stageNumber,
+    required String title,
+    required int completed,
+    required int total,
+    required String subtitle,
+    required Color color,
+  }) {
+    final double ratio = total > 0 ? (completed / total).clamp(0.0, 1.0) : 0.0;
+    final int percentage = (ratio * 100).toInt();
+    final bool isSelected = _activeFormFilter == stageNumber;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () {
+          setState(() {
+            if (_activeFormFilter == stageNumber) {
+              _activeFormFilter = null; // Toggle off on second click
+            } else {
+              _activeFormFilter = stageNumber; // Set active stage filter
+            }
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withOpacity(0.08)
+                : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade200,
+              width: isSelected ? 2.0 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    width: 54,
+                    height: 54,
+                    child: CircularProgressIndicator(
+                      value: ratio,
+                      backgroundColor: const Color(0xFFE2E8F0),
+                      color: color,
+                      strokeWidth: 6,
+                    ),
+                  ),
+                  Text(
+                    '$percentage%',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: isSelected ? color : const Color(0xFF1E293B),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$completed / $total',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: color,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
