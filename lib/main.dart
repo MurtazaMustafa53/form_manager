@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
         return MaterialApp(
-          title: 'Forms Manager',
+          title: 'IBM SOLAR SURVEY',
           debugShowCheckedModeBanner: false,
 
           theme: ThemeData(
