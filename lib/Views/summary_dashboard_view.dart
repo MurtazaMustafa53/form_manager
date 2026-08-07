@@ -62,7 +62,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // TAB CARDS ROW (Stays fixed, no flickering)
+                // TAB CARDS ROW
                 ValueListenableBuilder<int>(
                   valueListenable: _selectedFormTabNotifier,
                   builder: (context, currentTab, _) {
@@ -109,7 +109,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                 ),
                 const SizedBox(height: 24),
 
-                // ONLY CONTENT BELOW RELOADS SMOOTHLY
+                // CONTENT SWITCHER
                 ValueListenableBuilder<int>(
                   valueListenable: _selectedFormTabNotifier,
                   builder: (context, currentTab, _) {
@@ -269,7 +269,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   }
 
   // ---------------------------------------------------------------------------
-  // FORM 1 SUMMARY WITH CHARTS
+  // FORM 1 SUMMARY
   // ---------------------------------------------------------------------------
   Widget _buildForm1Summary(List<PersonModel> people) {
     final form1People = people.where((p) => p.completedFormCount >= 1).toList();
@@ -285,7 +285,6 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // CHARTS ROW
         Row(
           children: [
             Expanded(
@@ -312,8 +311,6 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           ],
         ),
         const SizedBox(height: 24),
-
-        // DATA TABLE
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -384,7 +381,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   }
 
   // ---------------------------------------------------------------------------
-  // FORM 2 SUMMARY WITH FINANCE CHART
+  // FORM 2 SUMMARY
   // ---------------------------------------------------------------------------
   Widget _buildForm2Summary(List<PersonModel> people) {
     final form2People = people.where((p) => p.completedFormCount >= 2).toList();
@@ -405,7 +402,6 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // FINANCE CHART CARD
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -450,7 +446,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                               ),
                             ),
                             Text(
-                              '${entry.value} (${percentage}%)',
+                              '${entry.value} ($percentage%)',
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -477,8 +473,6 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           ),
         ),
         const SizedBox(height: 24),
-
-        // DATA TABLE
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -569,7 +563,452 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   }
 
   // ---------------------------------------------------------------------------
-  // HELPER: DONUT/PIE CHART CARD FOR FORM 1 METRICS
+  // FORM 3 SUMMARY (DIRECT FIREBASE MAPPING)
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // FORM 3 SUMMARY (DIRECT FIREBASE MAPPING ON PERSON MODEL)
+  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // FORM 3 SUMMARY (FETCHING DIRECTLY FROM FIRESTORE 'forms' COLLECTION)
+  // ---------------------------------------------------------------------------
+  Widget _buildForm3Summary(List<PersonModel> people) {
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('forms')
+          .where('formNumber', isEqualTo: 3)
+          .where('isDraft', isEqualTo: false)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading Form 3 data: ${snapshot.error}'),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('No Form 3 submissions found in Firebase.'),
+            ),
+          );
+        }
+
+        final form3Docs = snapshot.data!.docs;
+        final int totalForm3 = form3Docs.length;
+
+        // Analytics Aggregators
+        final Map<String, int> roofTypeCounts = {};
+        int totalHousePanels = 0;
+        int totalFloorMountPanels = 0;
+        int totalElevatedPanels = 0;
+
+        final Map<String, int> mainBoardCounts = {};
+        int waterTapCount = 0;
+        int separateBreakersCount = 0;
+        int upsWiringCount = 0;
+
+        double totalDcWireMeters = 0;
+        double totalAcWireMeters = 0;
+        double totalEarthingMeters = 0;
+
+        final Map<String, int> aggregateBom = {};
+
+        for (var doc in form3Docs) {
+          final data = doc.data() as Map<String, dynamic>? ?? {};
+          final answers = Map<String, dynamic>.from(data['answers'] ?? {});
+
+          // 1. Roof Details
+          final rawRoofType = answers['roofType']?.toString().trim();
+          final roofType = (rawRoofType != null && rawRoofType.isNotEmpty)
+              ? rawRoofType
+              : 'Unspecified';
+          roofTypeCounts[roofType] = (roofTypeCounts[roofType] ?? 0) + 1;
+
+          totalHousePanels +=
+              int.tryParse(
+                answers['houseNoOfSolarPanels']?.toString() ?? '0',
+              ) ??
+              0;
+          totalFloorMountPanels +=
+              int.tryParse(answers['floorMountNoOfSolar']?.toString() ?? '0') ??
+              0;
+          totalElevatedPanels +=
+              int.tryParse(answers['elevatedNoOfSolar']?.toString() ?? '0') ??
+              0;
+
+          // 2. Electrical Infrastructure Details
+          final rawMainBoard = answers['mainBoardType']?.toString().trim();
+          final mainBoard = (rawMainBoard != null && rawMainBoard.isNotEmpty)
+              ? rawMainBoard
+              : 'Unspecified';
+          mainBoardCounts[mainBoard] = (mainBoardCounts[mainBoard] ?? 0) + 1;
+
+          if (answers['waterConnectionOnRoof'] == true) waterTapCount++;
+          if (answers['separateRoomWiseBreakers'] == true)
+            separateBreakersCount++;
+          if (answers['upsWiring'] == true) upsWiringCount++;
+
+          totalDcWireMeters +=
+              double.tryParse(answers['dcWireLength']?.toString() ?? '0') ?? 0;
+          totalAcWireMeters +=
+              double.tryParse(answers['acWireLength']?.toString() ?? '0') ?? 0;
+          totalEarthingMeters +=
+              double.tryParse(answers['earthingLength']?.toString() ?? '0') ??
+              0;
+
+          // 3. Bill of Materials (BOM) Map
+          final rawMaterials = answers['materials'];
+          if (rawMaterials is Map) {
+            rawMaterials.forEach((key, val) {
+              final int qty = int.tryParse(val?.toString() ?? '0') ?? 0;
+              if (qty > 0) {
+                aggregateBom[key.toString()] =
+                    (aggregateBom[key.toString()] ?? 0) + qty;
+              }
+            });
+          }
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // METRIC CARDS ROW
+            Row(
+              children: [
+                Expanded(
+                  child: _buildMetricTile(
+                    title: 'Total Solar Panels',
+                    value:
+                        '${totalHousePanels + totalFloorMountPanels + totalElevatedPanels}',
+                    subtitle:
+                        'House: $totalHousePanels | Floor: $totalFloorMountPanels | Elevated: $totalElevatedPanels',
+                    icon: Icons.solar_power,
+                    color: const Color(0xFF8B5CF6),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildMetricTile(
+                    title: 'Roof Water Tap Access',
+                    value: '$waterTapCount / $totalForm3',
+                    subtitle:
+                        '${totalForm3 > 0 ? ((waterTapCount / totalForm3) * 100).toInt() : 0}% sites with water tap',
+                    icon: Icons.water_drop_outlined,
+                    color: const Color(0xFF0EA5E9),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildMetricTile(
+                    title: 'Wiring Metrics',
+                    value:
+                        '${(totalDcWireMeters + totalAcWireMeters).toInt()}m Total',
+                    subtitle:
+                        'DC: ${totalDcWireMeters.toInt()}m | AC: ${totalAcWireMeters.toInt()}m | Earth: ${totalEarthingMeters.toInt()}m',
+                    icon: Icons.cable,
+                    color: const Color(0xFFF59E0B),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // CHARTS ROW
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Roof Types Breakdown
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Roof Types Breakdown',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (roofTypeCounts.isEmpty)
+                          const Text('No roof data recorded.')
+                        else
+                          ...roofTypeCounts.entries.map((entry) {
+                            final double ratio = totalForm3 > 0
+                                ? entry.value / totalForm3
+                                : 0.0;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        entry.key,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${entry.value} (${(ratio * 100).toInt()}%)',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF8B5CF6),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: ratio,
+                                      minHeight: 8,
+                                      backgroundColor: const Color(0xFFE2E8F0),
+                                      color: const Color(0xFF8B5CF6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+
+                // Electrical Boards & Readiness
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Main Board Readiness',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (mainBoardCounts.isEmpty)
+                          const Text('No main board data recorded.')
+                        else
+                          ...mainBoardCounts.entries.map((entry) {
+                            final double ratio = totalForm3 > 0
+                                ? entry.value / totalForm3
+                                : 0.0;
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        entry.key,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${entry.value} (${(ratio * 100).toInt()}%)',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF10B981),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: ratio,
+                                      minHeight: 8,
+                                      backgroundColor: const Color(0xFFE2E8F0),
+                                      color: const Color(0xFF10B981),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }),
+                        const Divider(height: 24),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Room-Wise Breakers',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              '$separateBreakersCount / $totalForm3',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Existing UPS Wiring',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            Text(
+                              '$upsWiringCount / $totalForm3',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // BILL OF MATERIALS (BOM) TABLE
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Bill of Materials (BOM) Aggregated Requirements',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3E8FF),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${aggregateBom.length} Material Types Required',
+                          style: const TextStyle(
+                            color: Color(0xFF6B21A8),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (aggregateBom.isEmpty)
+                    const Text(
+                      'No material inventory entries found in Firebase forms.',
+                    )
+                  else
+                    SizedBox(
+                      width: double.infinity,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columns: const [
+                            DataColumn(label: Text('Material Description')),
+                            DataColumn(
+                              label: Text('Total Required Quantity'),
+                              numeric: true,
+                            ),
+                          ],
+                          rows: aggregateBom.entries.map((entry) {
+                            return DataRow(
+                              cells: [
+                                DataCell(
+                                  Text(
+                                    _formatMaterialKey(entry.key),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                DataCell(
+                                  Text(
+                                    '${entry.value}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF2563EB),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // HELPER WIDGETS
   // ---------------------------------------------------------------------------
   Widget _buildPieChartCard({
     required String title,
@@ -676,10 +1115,13 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
     );
   }
 
-  // FORM 3 SUMMARY TABLE
-  Widget _buildForm3Summary(List<PersonModel> people) {
-    final form3People = people.where((p) => p.completedFormCount >= 3).toList();
-
+  Widget _buildMetricTile({
+    required String title,
+    required String value,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -690,63 +1132,45 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Form 3 Submissions',
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              Icon(icon, color: color, size: 20),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
             style: TextStyle(
+              color: color,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Color(0xFF1E293B),
             ),
           ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Profile Name')),
-                  DataColumn(label: Text('ITS')),
-                  DataColumn(label: Text('Status')),
-                ],
-                rows: form3People.map((person) {
-                  return DataRow(
-                    cells: [
-                      DataCell(
-                        Text(
-                          person.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      DataCell(Text(person.its.toString())),
-                      DataCell(
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFDCFCE7),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Completed',
-                            style: TextStyle(
-                              color: Color(0xFF166534),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
+          const SizedBox(height: 6),
+          Text(
+            subtitle,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
           ),
         ],
       ),
     );
+  }
+
+  String _formatMaterialKey(String key) {
+    final RegExp camelCasePattern = RegExp(r'(?<=[a-z])(?=[A-Z])');
+    final String formatted = key.replaceAllMapped(
+      camelCasePattern,
+      (match) => ' ',
+    );
+    return formatted.substring(0, 1).toUpperCase() + formatted.substring(1);
   }
 }
