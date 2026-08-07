@@ -29,11 +29,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AppProvider>(
       builder: (context, provider, _) {
-        // if (provider.isAuthLoading) {
-        //   return const MaterialApp(
-        //     home: Scaffold(body: Center(child: CircularProgressIndicator())),
-        //   );
-        // }
+        if (provider.isAuthLoading) {
+          return const MaterialApp(
+            home: Scaffold(body: Center(child: CircularProgressIndicator())),
+          );
+        }
         return MaterialApp(
           title: 'IBM SOLAR SURVEY',
           debugShowCheckedModeBanner: false,
