@@ -54,8 +54,9 @@ class _Form3ViewState extends State<Form3View> {
     'pipeLength34': TextEditingController(),
     'wire7029': TextEditingController(),
     'pipeLength1': TextEditingController(),
-    'wire4mm': TextEditingController(),
-    'screw': TextEditingController(),
+    'acWire4mm': TextEditingController(),
+    'dcWire4mm': TextEditingController(),
+    'changeOver': TextEditingController(),
     'wire4076': TextEditingController(),
     'rawalPlug': TextEditingController(),
     'duct25x25': TextEditingController(),
@@ -127,6 +128,18 @@ class _Form3ViewState extends State<Form3View> {
               _matControllers[key]!.text = val.toString();
             }
           });
+
+          // If older drafts used the single 'wire4mm' key, migrate that value
+          // into the new 'acWire4mm' and 'dcWire4mm' fields so viewers keep data.
+          if (mats.containsKey('wire4mm')) {
+            final migrated = (mats['wire4mm'] ?? '').toString();
+            if (_matControllers.containsKey('acWire4mm')) {
+              _matControllers['acWire4mm']!.text = migrated;
+            }
+            if (_matControllers.containsKey('dcWire4mm')) {
+              _matControllers['dcWire4mm']!.text = migrated;
+            }
+          }
         }
       });
     }
@@ -534,7 +547,8 @@ class _Form3ViewState extends State<Form3View> {
                 _buildMaterialField('wire7029', 'Wire 7/0.29'),
                 _buildMaterialField('dcBreaker', 'DC Breaker'),
                 _buildMaterialField('pipeLength1', 'PVC Pipe 1"'),
-                _buildMaterialField('wire4mm', 'Wire 4mm'),
+                _buildMaterialField('acWire4mm', 'Wire 4mm (AC)'),
+                _buildMaterialField('dcWire4mm', 'Wire 4mm (DC)'),
                 _buildMaterialField('changeOver', 'Changeover Switch'),
                 _buildMaterialField('screw', 'Screws'),
                 _buildMaterialField('wire4076', 'Wire 40/0.76'),

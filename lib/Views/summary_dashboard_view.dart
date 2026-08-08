@@ -526,7 +526,9 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                         );
                       }),
                       DataRow(
-                        color: WidgetStateProperty.all(const Color(0xFFECFDF5)),
+                        color: MaterialStateProperty.all(
+                          const Color(0xFFECFDF5),
+                        ),
                         cells: [
                           const DataCell(
                             Text(
@@ -666,10 +668,15 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           if (rawMaterials is Map) {
             rawMaterials.forEach((key, val) {
               final int qty = int.tryParse(val?.toString() ?? '0') ?? 0;
-              if (qty > 0) {
-                aggregateBom[key.toString()] =
-                    (aggregateBom[key.toString()] ?? 0) + qty;
+              if (qty <= 0) return;
+
+              // Normalize split 4mm wire keys into a single 'wire4mm' bucket
+              String mapKey = key.toString();
+              if (mapKey == 'acWire4mm' || mapKey == 'dcWire4mm') {
+                mapKey = 'wire4mm';
               }
+
+              aggregateBom[mapKey] = (aggregateBom[mapKey] ?? 0) + qty;
             });
           }
         }
@@ -1023,6 +1030,33 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
         ? (positiveCount / totalCount) * 100
         : 0;
 
+    // Protect against zero-total cases: fl_chart expects non-zero total for sensible rendering.
+    final bool noData = totalCount == 0;
+
+    final sections = noData
+        ? [
+            PieChartSectionData(
+              color: Colors.grey.shade300,
+              value: 1,
+              title: '',
+              radius: 18,
+            ),
+          ]
+        : [
+            PieChartSectionData(
+              color: positiveColor,
+              value: positiveCount.toDouble(),
+              title: '',
+              radius: 18,
+            ),
+            PieChartSectionData(
+              color: Colors.grey.shade300,
+              value: negativeCount.toDouble(),
+              title: '',
+              radius: 18,
+            ),
+          ];
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -1051,20 +1085,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                   PieChartData(
                     sectionsSpace: 2,
                     centerSpaceRadius: 28,
-                    sections: [
-                      PieChartSectionData(
-                        color: positiveColor,
-                        value: positiveCount.toDouble(),
-                        title: '',
-                        radius: 18,
-                      ),
-                      PieChartSectionData(
-                        color: Colors.grey.shade300,
-                        value: negativeCount.toDouble(),
-                        title: '',
-                        radius: 18,
-                      ),
-                    ],
+                    sections: sections,
                   ),
                 ),
               ),
@@ -1110,6 +1131,14 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
               ),
             ],
           ),
+          if (noData)
+            Padding(
+              padding: const EdgeInsets.only(top: 12.0),
+              child: Text(
+                'No data available',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+              ),
+            ),
         ],
       ),
     );
