@@ -11,19 +11,23 @@ class ProfileDetailView extends StatelessWidget {
 
   const ProfileDetailView({super.key, required this.person});
 
-  void _navigateToForm(BuildContext context, int formNumber) {
+  void _navigateToForm(
+    BuildContext context,
+    int formNumber, {
+    bool readOnly = false,
+  }) {
     Widget targetForm;
 
     switch (formNumber) {
       case 1:
-        targetForm = Form1View(person: person);
+        targetForm = Form1View(person: person, readOnly: readOnly);
         break;
       case 2:
-        targetForm = Form2View(person: person);
+        targetForm = Form2View(person: person, readOnly: readOnly);
         break;
       case 3:
       default:
-        targetForm = Form3View(person: person);
+        targetForm = Form3View(person: person, readOnly: readOnly);
         break;
     }
 
@@ -352,6 +356,23 @@ class ProfileDetailView extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             ElevatedButton.icon(
+              label: const Text('View'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF1F5F9),
+                foregroundColor: const Color(0xFF2563EB),
+                elevation: 0,
+                side: const BorderSide(color: Color(0xFFCBD5E1)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
+              icon: const Icon(Icons.remove_red_eye, size: 16),
+              onPressed: () =>
+                  _navigateToForm(context, formNumber, readOnly: true),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton.icon(
               label: Text(isCompleted ? 'Edit' : 'Fill Form'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: isCompleted
@@ -373,7 +394,10 @@ class ProfileDetailView extends StatelessWidget {
                 isCompleted ? Icons.edit : Icons.arrow_forward,
                 size: 16,
               ),
-              onPressed: () => _navigateToForm(context, formNumber),
+              onPressed:
+                  Provider.of<AppProvider>(context, listen: false).isViewer
+                  ? null
+                  : () => _navigateToForm(context, formNumber),
             ),
           ],
         ),

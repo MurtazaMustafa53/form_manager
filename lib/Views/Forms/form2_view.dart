@@ -6,8 +6,10 @@ import 'package:form_manager/Model/person_model.dart';
 
 class Form2View extends StatefulWidget {
   final PersonModel person;
+  final bool readOnly;
 
-  const Form2View({Key? key, required this.person}) : super(key: key);
+  const Form2View({Key? key, required this.person, this.readOnly = false})
+    : super(key: key);
 
   @override
   State<Form2View> createState() => _Form2ViewState();
@@ -35,6 +37,7 @@ class _Form2ViewState extends State<Form2View> {
 
   bool _isSavingDraft = false;
   bool _isSubmitting = false;
+  bool _isReadOnly = false;
 
   // Updated options to only Yes and No
   final List<String> _financeExpectationOptions = ['Yes', 'No'];
@@ -46,6 +49,9 @@ class _Form2ViewState extends State<Form2View> {
   void initState() {
     super.initState();
     _initAppliances();
+    _isReadOnly =
+        widget.readOnly ||
+        Provider.of<AppProvider>(context, listen: false).isViewer;
     _loadInitialData();
   }
 
@@ -315,10 +321,11 @@ class _Form2ViewState extends State<Form2View> {
       child: TextFormField(
         controller: controller,
         keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
+        enabled: !_isReadOnly,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: !_isReadOnly ? Colors.white : Colors.grey.shade100,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
       ),
@@ -339,13 +346,13 @@ class _Form2ViewState extends State<Form2View> {
         decoration: InputDecoration(
           labelText: label,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: !_isReadOnly ? Colors.white : Colors.grey.shade100,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
         items: items
             .map((opt) => DropdownMenuItem(value: opt, child: Text(opt)))
             .toList(),
-        onChanged: onChanged,
+        onChanged: _isReadOnly ? null : onChanged,
       ),
     );
   }
@@ -523,6 +530,7 @@ class _Form2ViewState extends State<Form2View> {
                                   child: TextFormField(
                                     controller: wattsCtrl,
                                     keyboardType: TextInputType.number,
+                                    enabled: !_isReadOnly,
                                     onChanged: (_) => setState(() {}),
                                     decoration: InputDecoration(
                                       contentPadding:
@@ -530,6 +538,10 @@ class _Form2ViewState extends State<Form2View> {
                                             horizontal: 12,
                                             vertical: 8,
                                           ),
+                                      filled: true,
+                                      fillColor: !_isReadOnly
+                                          ? Colors.white
+                                          : Colors.grey.shade100,
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -547,6 +559,7 @@ class _Form2ViewState extends State<Form2View> {
                                   child: TextFormField(
                                     controller: qtyCtrl,
                                     keyboardType: TextInputType.number,
+                                    enabled: !_isReadOnly,
                                     onChanged: (_) => setState(() {}),
                                     decoration: InputDecoration(
                                       contentPadding:
@@ -554,6 +567,10 @@ class _Form2ViewState extends State<Form2View> {
                                             horizontal: 12,
                                             vertical: 8,
                                           ),
+                                      filled: true,
+                                      fillColor: !_isReadOnly
+                                          ? Colors.white
+                                          : Colors.grey.shade100,
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -639,12 +656,13 @@ class _Form2ViewState extends State<Form2View> {
               // Remarks Full Width Box
               TextFormField(
                 controller: _remarksController,
+                enabled: !_isReadOnly,
                 maxLines: 4,
                 decoration: InputDecoration(
                   labelText: 'Remarks',
                   alignLabelWithHint: true,
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: !_isReadOnly ? Colors.white : Colors.grey.shade100,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -664,50 +682,63 @@ class _Form2ViewState extends State<Form2View> {
                     spacing: 16,
                     runSpacing: 12,
                     children: [
-                      SizedBox(
-                        width: buttonWidth,
-                        height: 48,
-                        child: OutlinedButton(
-                          onPressed: _isSavingDraft ? null : _handleSaveDraft,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFF2563EB),
-                            side: const BorderSide(color: Color(0xFFCBD5E1)),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                      if (!_isReadOnly) ...[
+                        SizedBox(
+                          width: buttonWidth,
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: _isSavingDraft ? null : _handleSaveDraft,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF2563EB),
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
                             ),
+                            child: _isSavingDraft
+                                ? const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  )
+                                : const Text(
+                                    'Save Local Draft',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
-                          child: _isSavingDraft
-                              ? const CircularProgressIndicator(strokeWidth: 2)
-                              : const Text(
-                                  'Save Local Draft',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
                         ),
-                      ),
-                      SizedBox(
-                        width: buttonWidth,
-                        height: 48,
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting ? null : _handleSubmit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2563EB),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                        SizedBox(
+                          width: buttonWidth,
+                          height: 48,
+                          child: ElevatedButton(
+                            onPressed: _isSubmitting ? null : _handleSubmit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF2563EB),
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
                             ),
+                            child: _isSubmitting
+                                ? const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  )
+                                : const Text(
+                                    'Submit Form',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
-                          child: _isSubmitting
-                              ? const CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                )
-                              : const Text(
-                                  'Submit Form',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
                         ),
-                      ),
+                      ] else ...[
+                        const Text(
+                          'Viewer account: read-only access. Edit and submission are disabled.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ],
                     ],
                   );
                 },

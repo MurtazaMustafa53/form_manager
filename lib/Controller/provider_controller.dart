@@ -111,6 +111,9 @@ class AppProvider extends ChangeNotifier {
 
   /// Save draft locally via local storage controller
   Future<void> saveDraft(FormDataModel formData) async {
+    if (!isAdmin && !isDev) {
+      throw Exception('Unauthorized: only admin and dev can save drafts.');
+    }
     await LocalStorageController.saveFormDraft(formData);
     notifyListeners();
   }
@@ -130,6 +133,9 @@ class AppProvider extends ChangeNotifier {
 
   /// Submit Form to Firebase and clear the local draft cache
   Future<void> submitFormToFirebase(FormDataModel formData) async {
+    if (!isAdmin && !isDev) {
+      throw Exception('Unauthorized: only admin and dev can submit forms.');
+    }
     await _firebaseController.submitForm(formData);
     await LocalStorageController.clearFormDraft(
       formData.personId,
