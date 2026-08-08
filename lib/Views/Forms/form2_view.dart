@@ -31,6 +31,7 @@ class _Form2ViewState extends State<Form2View> {
   final _remarksController = TextEditingController();
 
   String? _selectedFinanceExpectation;
+  bool _showSolarSpecificFields = false;
 
   bool _isSavingDraft = false;
   bool _isSubmitting = false;
@@ -81,37 +82,51 @@ class _Form2ViewState extends State<Form2View> {
   Future<void> _loadInitialData() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
 
+    FormDataModel? form1Data = provider.loadDraft(widget.person.id, 1);
+    form1Data ??= await provider.getSubmittedForm(widget.person.id, 1);
+
+    final solarSelection = (form1Data?.answers['solarWillingness'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+
+    final bool showSolarSpecificFields = solarSelection == 'already installed';
+
     FormDataModel? draft = provider.loadDraft(widget.person.id, 2);
     draft ??= await provider.getSubmittedForm(widget.person.id, 2);
 
-    if (draft != null && mounted) {
-      final ans = draft.answers;
+    if (mounted) {
       setState(() {
-        _kwInstalledController.text = ans['kwInstalled'] ?? '';
-        _panelsWattageController.text = ans['panelsWattage'] ?? '';
-        _inverterCapacityController.text = ans['inverterCapacity'] ?? '';
-        _batteryTypeController.text = ans['batteryType'] ?? '';
-        _normalUpsInstalledController.text = ans['normalUpsInstalled'] ?? '';
-        _existingInverterController.text = ans['existingInverter'] ?? '';
-        _existingBatteryController.text = ans['existingBattery'] ?? '';
-        _financeByMuminController.text = ans['financeByMumin'] ?? '';
-        _selectedFinanceExpectation = ans['financeExpectation'];
-        _filledByStaffController.text = ans['filledByStaff'] ?? '';
-        _landlordNameController.text = ans['landlordName'] ?? '';
-        _landlordContactController.text = ans['landlordContact'] ?? '';
-        _remarksController.text = ans['remarks'] ?? '';
+        _showSolarSpecificFields = showSolarSpecificFields;
 
-        if (ans['appliances'] != null) {
-          final List savedList = ans['appliances'];
-          for (var item in savedList) {
-            final index = _appliances.indexWhere(
-              (a) => a['name'] == item['name'],
-            );
-            if (index != -1) {
-              _appliances[index]['wattsController'].text = (item['watts'] ?? 0)
-                  .toString();
-              _appliances[index]['qtyController'].text = (item['qty'] ?? 0)
-                  .toString();
+        if (draft != null) {
+          final ans = draft.answers;
+          _kwInstalledController.text = ans['kwInstalled'] ?? '';
+          _panelsWattageController.text = ans['panelsWattage'] ?? '';
+          _inverterCapacityController.text = ans['inverterCapacity'] ?? '';
+          _batteryTypeController.text = ans['batteryType'] ?? '';
+          _normalUpsInstalledController.text = ans['normalUpsInstalled'] ?? '';
+          _existingInverterController.text = ans['existingInverter'] ?? '';
+          _existingBatteryController.text = ans['existingBattery'] ?? '';
+          _financeByMuminController.text = ans['financeByMumin'] ?? '';
+          _selectedFinanceExpectation = ans['financeExpectation'];
+          _filledByStaffController.text = ans['filledByStaff'] ?? '';
+          _landlordNameController.text = ans['landlordName'] ?? '';
+          _landlordContactController.text = ans['landlordContact'] ?? '';
+          _remarksController.text = ans['remarks'] ?? '';
+
+          if (ans['appliances'] != null) {
+            final List savedList = ans['appliances'];
+            for (var item in savedList) {
+              final index = _appliances.indexWhere(
+                (a) => a['name'] == item['name'],
+              );
+              if (index != -1) {
+                _appliances[index]['wattsController'].text =
+                    (item['watts'] ?? 0).toString();
+                _appliances[index]['qtyController'].text = (item['qty'] ?? 0)
+                    .toString();
+              }
             }
           }
         }
@@ -161,22 +176,26 @@ class _Form2ViewState extends State<Form2View> {
 
   double _calculateCompletionRatio() {
     int filledCount = 0;
-    const int trackedFields = 12;
+    int trackedFields = 5;
 
-    if (_kwInstalledController.text.trim().isNotEmpty) filledCount++;
-    if (_panelsWattageController.text.trim().isNotEmpty) filledCount++;
-    if (_inverterCapacityController.text.trim().isNotEmpty) filledCount++;
-    if (_batteryTypeController.text.trim().isNotEmpty) filledCount++;
-    if (_normalUpsInstalledController.text.trim().isNotEmpty) filledCount++;
-    if (_existingInverterController.text.trim().isNotEmpty) filledCount++;
-    if (_existingBatteryController.text.trim().isNotEmpty) filledCount++;
+    if (_showSolarSpecificFields) {
+      trackedFields += 7;
+      if (_kwInstalledController.text.trim().isNotEmpty) filledCount++;
+      if (_panelsWattageController.text.trim().isNotEmpty) filledCount++;
+      if (_inverterCapacityController.text.trim().isNotEmpty) filledCount++;
+      if (_batteryTypeController.text.trim().isNotEmpty) filledCount++;
+      if (_normalUpsInstalledController.text.trim().isNotEmpty) filledCount++;
+      if (_existingInverterController.text.trim().isNotEmpty) filledCount++;
+      if (_existingBatteryController.text.trim().isNotEmpty) filledCount++;
+    }
+
     if (_financeByMuminController.text.trim().isNotEmpty) filledCount++;
     if (_selectedFinanceExpectation != null) filledCount++;
     if (_filledByStaffController.text.trim().isNotEmpty) filledCount++;
     if (_landlordNameController.text.trim().isNotEmpty) filledCount++;
     if (_landlordContactController.text.trim().isNotEmpty) filledCount++;
 
-    return filledCount / trackedFields;
+    return trackedFields == 0 ? 0 : filledCount / trackedFields;
   }
 
   Map<String, dynamic> _collectAnswers() {
@@ -573,25 +592,27 @@ class _Form2ViewState extends State<Form2View> {
                 spacing: 16,
                 runSpacing: 16,
                 children: [
-                  _buildTextField(_kwInstalledController, 'KW Installed'),
-                  _buildTextField(_panelsWattageController, 'Panels Wattage'),
-                  _buildTextField(
-                    _inverterCapacityController,
-                    'Inverter Capacity',
-                  ),
-                  _buildTextField(_batteryTypeController, 'Battery Type'),
-                  _buildTextField(
-                    _normalUpsInstalledController,
-                    'Normal UPS Installed',
-                  ),
-                  _buildTextField(
-                    _existingInverterController,
-                    'Existing Inverter',
-                  ),
-                  _buildTextField(
-                    _existingBatteryController,
-                    'Existing Battery',
-                  ),
+                  if (_showSolarSpecificFields) ...[
+                    _buildTextField(_kwInstalledController, 'KW Installed'),
+                    _buildTextField(_panelsWattageController, 'Panels Wattage'),
+                    _buildTextField(
+                      _inverterCapacityController,
+                      'Inverter Capacity',
+                    ),
+                    _buildTextField(_batteryTypeController, 'Battery Type'),
+                    _buildTextField(
+                      _normalUpsInstalledController,
+                      'Normal UPS Installed',
+                    ),
+                    _buildTextField(
+                      _existingInverterController,
+                      'Existing Inverter',
+                    ),
+                    _buildTextField(
+                      _existingBatteryController,
+                      'Existing Battery',
+                    ),
+                  ],
                   _buildTextField(
                     _financeByMuminController,
                     'Finance by Mumin',
