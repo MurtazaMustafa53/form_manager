@@ -353,6 +353,33 @@ class _Form3ViewState extends State<Form3View> {
     );
   }
 
+  Widget _buildSectionCard(String title, List<Widget> children) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Wrap(spacing: 16, runSpacing: 16, children: children),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final double completionRatio = _calculateCompletionRatio();
@@ -422,137 +449,109 @@ class _Form3ViewState extends State<Form3View> {
               const SizedBox(height: 24),
 
               // Section 1: Roof & Structural Details
-              _buildSectionHeader('1. Roof & Structural Details'),
+              _buildSectionCard('1. Roof & Structural Details', [
+                _buildDropdownField(
+                  _roofType,
+                  'Roof Type',
+                  _roofTypeOptions,
+                  (val) => setState(() => _roofType = val),
+                ),
+                _buildTextField(_roofSizeController, 'Roof Size (sq ft)'),
+                _buildTextField(
+                  _houseNoOfSolarPanelsController,
+                  'Max Solar Panels Count',
+                  isNumeric: true,
+                ),
+                _buildTextField(
+                  _floorMountNoOfSolarController,
+                  'Floor Mount Panels Count',
+                  isNumeric: true,
+                ),
+                _buildTextField(
+                  _elevatedNoOfSolarController,
+                  'Elevated Mount Panels Count',
+                  isNumeric: true,
+                ),
+              ]),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _buildDropdownField(
-                    _roofType,
-                    'Roof Type',
-                    _roofTypeOptions,
-                    (val) => setState(() => _roofType = val),
-                  ),
-                  _buildTextField(_roofSizeController, 'Roof Size (sq ft)'),
-                  _buildTextField(
-                    _houseNoOfSolarPanelsController,
-                    'Max Solar Panels Count',
-                    isNumeric: true,
-                  ),
-                  _buildTextField(
-                    _floorMountNoOfSolarController,
-                    'Floor Mount Panels Count',
-                    isNumeric: true,
-                  ),
-                  _buildTextField(
-                    _elevatedNoOfSolarController,
-                    'Elevated Mount Panels Count',
-                    isNumeric: true,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
 
               // Section 2: Electrical Details
-              _buildSectionHeader('2. Electrical Infrastructure Details'),
+              _buildSectionCard('2. Electrical Infrastructure Details', [
+                _buildDropdownField(
+                  _mainBoardType,
+                  'Main DB Board Type',
+                  _mainBoardOptions,
+                  (val) => setState(() => _mainBoardType = val),
+                ),
+                _buildTextField(_dcWireLengthController, 'DC Wire Length (m)'),
+                _buildTextField(_acWireLengthController, 'AC Wire Length (m)'),
+                _buildBooleanDropdown(
+                  _upsWiring,
+                  'UPS Wiring Present?',
+                  (val) => setState(() => _upsWiring = val),
+                ),
+                _buildTextField(
+                  _upsWiringLengthController,
+                  'UPS Wiring Length (m)',
+                ),
+                _buildTextField(
+                  _inverterInstallationAreaController,
+                  'Inverter Location Area',
+                ),
+                _buildBooleanDropdown(
+                  _separateRoomWiseBreakers,
+                  'Separate Room Breakers?',
+                  (val) => setState(() => _separateRoomWiseBreakers = val),
+                ),
+                _buildBooleanDropdown(
+                  _waterConnectionOnRoof,
+                  'Water Tap on Roof?',
+                  (val) => setState(() => _waterConnectionOnRoof = val),
+                ),
+                _buildTextField(
+                  _earthingLengthController,
+                  'Earthing Cable Length (m)',
+                ),
+              ]),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _buildDropdownField(
-                    _mainBoardType,
-                    'Main DB Board Type',
-                    _mainBoardOptions,
-                    (val) => setState(() => _mainBoardType = val),
-                  ),
-                  _buildTextField(
-                    _dcWireLengthController,
-                    'DC Wire Length (m)',
-                  ),
-                  _buildTextField(
-                    _acWireLengthController,
-                    'AC Wire Length (m)',
-                  ),
-                  _buildBooleanDropdown(
-                    _upsWiring,
-                    'UPS Wiring Present?',
-                    (val) => setState(() => _upsWiring = val),
-                  ),
-                  _buildTextField(
-                    _upsWiringLengthController,
-                    'UPS Wiring Length (m)',
-                  ),
-                  _buildTextField(
-                    _inverterInstallationAreaController,
-                    'Inverter Location Area',
-                  ),
-                  _buildBooleanDropdown(
-                    _separateRoomWiseBreakers,
-                    'Separate Room Breakers?',
-                    (val) => setState(() => _separateRoomWiseBreakers = val),
-                  ),
-                  _buildBooleanDropdown(
-                    _waterConnectionOnRoof,
-                    'Water Tap on Roof?',
-                    (val) => setState(() => _waterConnectionOnRoof = val),
-                  ),
-                  _buildTextField(
-                    _earthingLengthController,
-                    'Earthing Cable Length (m)',
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
 
               // Section 3: Bill of Materials
-              _buildSectionHeader('3. Bill of Materials Inventory'),
+              _buildSectionCard('3. Bill of Materials Inventory', [
+                _buildMaterialField('dbBox', 'DB Box'),
+                _buildMaterialField('nutBolts', 'Nuts & Bolts'),
+                _buildMaterialField('clip1', 'Clips 1"'),
+                _buildMaterialField('insulationTape', 'Insulation Tape'),
+                _buildMaterialField('acBreaker', 'AC Breaker'),
+                _buildMaterialField('pipeLength34', 'PVC Pipe 3/4"'),
+                _buildMaterialField('wire7029', 'Wire 7/0.29'),
+                _buildMaterialField('dcBreaker', 'DC Breaker'),
+                _buildMaterialField('pipeLength1', 'PVC Pipe 1"'),
+                _buildMaterialField('wire4mm', 'Wire 4mm'),
+                _buildMaterialField('changeOver', 'Changeover Switch'),
+                _buildMaterialField('screw', 'Screws'),
+                _buildMaterialField('wire4076', 'Wire 40/0.76'),
+                _buildMaterialField('indicationLights', 'Indication Lights'),
+                _buildMaterialField('rawalPlug', 'Rawal Plugs'),
+                _buildMaterialField('duct25x25', 'Duct 25x25'),
+                _buildMaterialField('mc4Connector', 'MC4 Connectors'),
+                _buildMaterialField('flexiblePipe34', 'Flexible Pipe 3/4"'),
+                _buildMaterialField('duct1x1', 'Duct 1x1'),
+                _buildMaterialField('batteryWire', 'Battery Cable'),
+                _buildMaterialField('flexiblePipe1', 'Flexible Pipe 1"'),
+                _buildMaterialField('band', 'Pipe Bends'),
+                _buildMaterialField('thimble', 'Thimble Lugs'),
+                _buildMaterialField('clip34', 'Clips 3/4"'),
+                _buildMaterialField('socket', 'Sockets'),
+              ]),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _buildMaterialField('dbBox', 'DB Box'),
-                  _buildMaterialField('acBreaker', 'AC Breaker'),
-                  _buildMaterialField('dcBreaker', 'DC Breaker'),
-                  _buildMaterialField('changeOver', 'Changeover Switch'),
-                  _buildMaterialField('indicationLights', 'Indication Lights'),
-                  _buildMaterialField('mc4Connector', 'MC4 Connectors'),
-                  _buildMaterialField('flexiblePipe34', 'Flexible Pipe 3/4"'),
-                  _buildMaterialField('duct1x1', 'Duct 1x1'),
-                  _buildMaterialField('batteryWire', 'Battery Cable'),
-                  _buildMaterialField('thimble', 'Thimble Lugs'),
-                  _buildMaterialField('nutBolts', 'Nuts & Bolts'),
-                  _buildMaterialField('clip1', 'Clips 1"'),
-                  _buildMaterialField('insulationTape', 'Insulation Tape'),
-                  _buildMaterialField('pipeLength34', 'PVC Pipe 3/4"'),
-                  _buildMaterialField('wire7029', 'Wire 7/0.29'),
-                  _buildMaterialField('pipeLength1', 'PVC Pipe 1"'),
-                  _buildMaterialField('wire4mm', 'Wire 4mm'),
-                  _buildMaterialField('screw', 'Screws'),
-                  _buildMaterialField('wire4076', 'Wire 40/0.76'),
-                  _buildMaterialField('rawalPlug', 'Rawal Plugs'),
-                  _buildMaterialField('duct25x25', 'Duct 25x25'),
-                  _buildMaterialField('flexiblePipe1', 'Flexible Pipe 1"'),
-                  _buildMaterialField('band', 'Pipe Bends'),
-                  _buildMaterialField('clip34', 'Clips 3/4"'),
-                  _buildMaterialField('socket', 'Sockets'),
-                ],
-              ),
-              const SizedBox(height: 24),
 
               // Staff & Remarks
-              Wrap(
-                spacing: 16,
-                runSpacing: 16,
-                children: [
-                  _buildTextField(
-                    _filledByStaffController,
-                    'Filled By Staff Name',
-                  ),
-                ],
-              ),
+              _buildSectionCard('Staff & Remarks', [
+                _buildTextField(
+                  _filledByStaffController,
+                  'Filled By Staff Name',
+                ),
+              ]),
               const SizedBox(height: 16),
 
               TextFormField(
