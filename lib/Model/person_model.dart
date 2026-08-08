@@ -9,13 +9,17 @@ class PersonModel {
 
   // Form 1 Fields
   final String? address;
-  final bool? willingToSolar;
-  final bool? landlordApproval;
+  final bool willingToSolar;
+  final bool landlordApproval;
+  final bool hasExistingSolarSystem;
 
-  // Form 2 Fields
-  final double? totalWattage;
-  final String? financeByMomin;
-  final String? financeAsPerExpectation;
+  // Form 2 Fields (With Default Values)
+  final double totalWattage;
+  final String financeByMomin;
+  final String financeAsPerExpectation;
+
+  // Form 3 / Electrical Flags
+  final bool hasExistingUps;
 
   // Completion Tracking
   final int completedFormCount;
@@ -28,12 +32,14 @@ class PersonModel {
     required this.its,
     this.sfNo,
     required this.contact,
-    this.address,
-    this.willingToSolar,
-    this.landlordApproval,
-    this.totalWattage,
-    this.financeByMomin,
-    this.financeAsPerExpectation,
+    this.address = '',
+    this.willingToSolar = false,
+    this.landlordApproval = false,
+    this.hasExistingSolarSystem = false,
+    this.totalWattage = 0.0,
+    this.financeByMomin = 'No',
+    this.financeAsPerExpectation = 'Unspecified',
+    this.hasExistingUps = false,
     this.completedFormCount = 0,
   });
 
@@ -41,6 +47,10 @@ class PersonModel {
 
   double get progressPercentage =>
       (completedFormCount / totalForms).clamp(0.0, 1.0);
+
+  // Conditional Logic Getters
+  bool get showSolarFields => hasExistingSolarSystem || willingToSolar;
+  bool get showUpsDetails => hasExistingUps;
 
   PersonModel copyWith({
     String? id,
@@ -51,9 +61,11 @@ class PersonModel {
     String? address,
     bool? willingToSolar,
     bool? landlordApproval,
+    bool? hasExistingSolarSystem,
     double? totalWattage,
     String? financeByMomin,
     String? financeAsPerExpectation,
+    bool? hasExistingUps,
     int? completedFormCount,
   }) {
     return PersonModel(
@@ -65,10 +77,13 @@ class PersonModel {
       address: address ?? this.address,
       willingToSolar: willingToSolar ?? this.willingToSolar,
       landlordApproval: landlordApproval ?? this.landlordApproval,
+      hasExistingSolarSystem:
+          hasExistingSolarSystem ?? this.hasExistingSolarSystem,
       totalWattage: totalWattage ?? this.totalWattage,
       financeByMomin: financeByMomin ?? this.financeByMomin,
       financeAsPerExpectation:
           financeAsPerExpectation ?? this.financeAsPerExpectation,
+      hasExistingUps: hasExistingUps ?? this.hasExistingUps,
       completedFormCount: completedFormCount ?? this.completedFormCount,
     );
   }
@@ -76,9 +91,8 @@ class PersonModel {
   factory PersonModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
 
-    // Safe parser for bool fields stored as String, int, or bool in Firestore
-    bool? _parseBool(dynamic value) {
-      if (value == null) return null;
+    bool _parseBool(dynamic value, {bool defaultValue = false}) {
+      if (value == null) return defaultValue;
       if (value is bool) return value;
       if (value is String) {
         final lower = value.trim().toLowerCase();
@@ -86,28 +100,25 @@ class PersonModel {
         if (lower == 'false' || lower == 'no' || lower == '0') return false;
       }
       if (value is num) return value == 1;
-      return null;
+      return defaultValue;
     }
 
-    // Safe parser for int fields stored as String or num
     int _parseInt(dynamic value) {
       if (value is num) return value.toInt();
       if (value is String) return int.tryParse(value) ?? 0;
       return 0;
     }
 
-    // Safe parser for optional int fields
     int? _parseNullableInt(dynamic value) {
       if (value is num) return value.toInt();
       if (value is String) return int.tryParse(value);
       return null;
     }
 
-    // Safe parser for double fields stored as String or num
-    double? _parseDouble(dynamic value) {
+    double _parseDouble(dynamic value, {double defaultValue = 0.0}) {
       if (value is num) return value.toDouble();
-      if (value is String) return double.tryParse(value);
-      return null;
+      if (value is String) return double.tryParse(value) ?? defaultValue;
+      return defaultValue;
     }
 
     return PersonModel(
@@ -116,16 +127,20 @@ class PersonModel {
       its: _parseInt(data['its']),
       sfNo: _parseNullableInt(data['sfNo']),
       contact: data['contact']?.toString() ?? '',
-      address: data['address']?.toString(),
+      address: data['address']?.toString() ?? '',
       willingToSolar: _parseBool(data['willingToSolar']),
       landlordApproval: _parseBool(data['landlordApproval']),
-      totalWattage: _parseDouble(data['totalWattage']),
-      financeByMomin: data['financeByMomin']?.toString(),
-      financeAsPerExpectation: data['financeAsPerExpectation']?.toString(),
+      hasExistingSolarSystem: _parseBool(data['hasExistingSolarSystem']),
+      totalWattage: _parseDouble(data['totalWattage'], defaultValue: 0.0),
+      financeByMomin: data['financeByMomin']?.toString() ?? 'No',
+      financeAsPerExpectation:
+          data['financeAsPerExpectation']?.toString() ?? 'Unspecified',
+      hasExistingUps: _parseBool(data['hasExistingUps']),
       completedFormCount: _parseInt(data['completedFormCount']),
     );
   }
 
+  // Ensures Form 1 & Form 2 edits are fully persisted to Firestore
   Map<String, dynamic> toMap() {
     return {
       'name': name,
@@ -135,9 +150,11 @@ class PersonModel {
       'address': address,
       'willingToSolar': willingToSolar,
       'landlordApproval': landlordApproval,
+      'hasExistingSolarSystem': hasExistingSolarSystem,
       'totalWattage': totalWattage,
       'financeByMomin': financeByMomin,
       'financeAsPerExpectation': financeAsPerExpectation,
+      'hasExistingUps': hasExistingUps,
       'completedFormCount': completedFormCount,
     };
   }

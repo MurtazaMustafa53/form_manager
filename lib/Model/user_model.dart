@@ -11,6 +11,11 @@ class UserModel {
   bool get isAdmin => role == UserRole.admin;
   bool get isViewer => role == UserRole.viewer;
 
+  // Permission Restrictions
+  bool get canEdit => role == UserRole.admin || role == UserRole.dev;
+  bool get canSubmit => role == UserRole.admin || role == UserRole.dev;
+  bool get isReadOnly => role == UserRole.viewer;
+
   factory UserModel.fromMap(Map<String, dynamic> map) {
     UserRole parsedRole;
     switch (map['role'] as String?) {

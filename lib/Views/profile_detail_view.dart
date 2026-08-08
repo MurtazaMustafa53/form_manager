@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/person_model.dart';
 import 'package:form_manager/Views/Forms/form1_view.dart';
 import 'package:form_manager/Views/Forms/form2_view.dart';
@@ -30,14 +32,19 @@ class ProfileDetailView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int completedCount = person.completedFormCount.clamp(0, 3);
-    final double progressRatio = person.progressPercentage;
+    final provider = context.watch<AppProvider>();
+    final currentPerson = provider.people.firstWhere(
+      (p) => p.id == person.id,
+      orElse: () => person,
+    );
+    final int completedCount = currentPerson.completedFormCount.clamp(0, 3);
+    final double progressRatio = currentPerson.progressPercentage;
     final int percentage = (progressRatio * 100).toInt();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
       appBar: AppBar(
-        title: Text('${person.name} Profile'),
+        title: Text('${currentPerson.name} Profile'),
         backgroundColor: const Color(0xFF1E293B),
         foregroundColor: Colors.white,
       ),
@@ -62,8 +69,8 @@ class ProfileDetailView extends StatelessWidget {
                       radius: 36,
                       backgroundColor: const Color(0xFF2563EB).withOpacity(0.1),
                       child: Text(
-                        person.name.isNotEmpty
-                            ? person.name[0].toUpperCase()
+                        currentPerson.name.isNotEmpty
+                            ? currentPerson.name[0].toUpperCase()
                             : 'P',
                         style: const TextStyle(
                           fontSize: 28,
@@ -80,7 +87,7 @@ class ProfileDetailView extends StatelessWidget {
                           Row(
                             children: [
                               Text(
-                                person.name,
+                                currentPerson.name,
                                 style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.bold,
@@ -89,7 +96,7 @@ class ProfileDetailView extends StatelessWidget {
                               ),
                               const SizedBox(width: 12),
                               Text(
-                                '(#SF-${person.sfNo} • ITS: ${person.its})',
+                                '(#SF-${currentPerson.sfNo} • ITS: ${currentPerson.its})',
                                 style: const TextStyle(
                                   color: Colors.grey,
                                   fontSize: 14,
@@ -104,15 +111,17 @@ class ProfileDetailView extends StatelessWidget {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: person.isComplete
+                              color: currentPerson.isComplete
                                   ? const Color(0xFFDCFCE7)
                                   : const Color(0xFFFEF3C7),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              person.isComplete ? 'COMPLETED' : 'IN PROGRESS',
+                              currentPerson.isComplete
+                                  ? 'COMPLETED'
+                                  : 'IN PROGRESS',
                               style: TextStyle(
-                                color: person.isComplete
+                                color: currentPerson.isComplete
                                     ? const Color(0xFF166534)
                                     : const Color(0xFF92400E),
                                 fontSize: 11,
@@ -266,7 +275,7 @@ class ProfileDetailView extends StatelessWidget {
                       context,
                       formNumber: 1,
                       formTitle: 'Form 1: Personal Profile Details',
-                      isCompleted: person.completedFormCount >= 1,
+                      isCompleted: currentPerson.completedFormCount >= 1,
                     ),
                     const Divider(height: 24),
                     _buildFormChecklistItem(
@@ -274,14 +283,14 @@ class ProfileDetailView extends StatelessWidget {
                       formNumber: 2,
                       formTitle:
                           'Form 2: Electrical Appliances & Financial Expectations',
-                      isCompleted: person.completedFormCount >= 2,
+                      isCompleted: currentPerson.completedFormCount >= 2,
                     ),
                     const Divider(height: 24),
                     _buildFormChecklistItem(
                       context,
                       formNumber: 3,
                       formTitle: 'Form 3: Solar Technical Audit',
-                      isCompleted: person.completedFormCount >= 3,
+                      isCompleted: currentPerson.completedFormCount >= 3,
                     ),
                   ],
                 ),

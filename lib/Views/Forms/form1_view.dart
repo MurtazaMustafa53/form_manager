@@ -1,6 +1,8 @@
 // ignore_for_file: unused_local_variable
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Model/person_model.dart';
 
@@ -68,6 +70,44 @@ class _Form1ViewState extends State<Form1View> {
     }
     if (widget.person.landlordApproval != null) {
       _landlordApproval = widget.person.landlordApproval! ? 'Yes' : 'No';
+    }
+
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    FormDataModel? draft = provider.loadDraft(widget.person.id, 1);
+    draft ??= await provider.getSubmittedForm(widget.person.id, 1);
+
+    if (draft != null && mounted) {
+      final ans = draft.answers;
+      setState(() {
+        _nameController.text = (ans['name'] ?? '').toString();
+        _itsController.text = (ans['its'] ?? '').toString();
+        _sfNoController.text = (ans['sfNo'] ?? '').toString();
+        _contactController.text = (ans['contact'] ?? '').toString();
+        _addressController.text = (ans['address'] ?? '').toString();
+        _familyMembersController.text = (ans['noOfPersons'] ?? '').toString();
+        _landlordNameController.text = (ans['landlordName'] ?? '').toString();
+        _landlordContactController.text = (ans['landlordContact'] ?? '')
+            .toString();
+
+        final houseType = (ans['houseType'] ?? '').toString();
+        _selectedHouseType = houseType.isNotEmpty ? houseType : null;
+
+        final rooms = (ans['rooms'] ?? '').toString();
+        _selectedTotalRooms = rooms.isNotEmpty ? rooms : null;
+
+        final solarWillingness = (ans['solarWillingness'] ?? '').toString();
+        _willingToSolar = solarWillingness.isNotEmpty ? solarWillingness : null;
+
+        final landlordApproval = (ans['landlordApproval'] ?? '').toString();
+        _landlordApproval = landlordApproval.isNotEmpty
+            ? landlordApproval
+            : null;
+      });
     }
   }
 
@@ -193,18 +233,20 @@ class _Form1ViewState extends State<Form1View> {
 
   Future<void> _handleSaveDraft() async {
     setState(() => _isSavingDraft = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
     final answers = _collectFormAnswers();
 
     final draft = FormDataModel(
       id: 'draft_form1_${widget.person.id}',
       personId: widget.person.id,
       formNumber: 1,
-      filledByStaffId: 'current_user_id',
+      filledByStaffId: provider.currentUser?.uid ?? '',
       answers: answers,
       isDraft: true,
       updatedAt: DateTime.now(),
     );
 
+    await provider.saveDraft(draft);
     await Future.delayed(const Duration(milliseconds: 400));
 
     if (mounted) {
@@ -216,34 +258,41 @@ class _Form1ViewState extends State<Form1View> {
   }
 
   Future<void> _handleSubmit() async {
-    if (!_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please complete required fields.')),
-      );
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
     final answers = _collectFormAnswers();
 
     final submission = FormDataModel(
       id: 'form1_${widget.person.id}',
       personId: widget.person.id,
       formNumber: 1,
-      filledByStaffId: 'current_user_id',
+      filledByStaffId: provider.currentUser?.uid ?? '',
       answers: answers,
       isDraft: false,
       updatedAt: DateTime.now(),
     );
 
-    await Future.delayed(const Duration(milliseconds: 600));
+    try {
+      await provider.submitFormToFirebase(submission);
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Form 1 submitted successfully.')),
-      );
-      Navigator.pop(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Form 1 submitted successfully.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Submission failed: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
     }
   }
 
