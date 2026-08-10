@@ -4,6 +4,37 @@ import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Model/person_model.dart';
 
+List<Map<String, String>> buildMaterialFieldDefinitions() {
+  return [
+    {'key': 'dbBox', 'label': 'DB Box'},
+    {'key': 'nutBolts', 'label': 'Nuts & Bolts'},
+    {'key': 'clip1', 'label': 'Clips 1"'},
+    {'key': 'insulationTape', 'label': 'Insulation Tape'},
+    {'key': 'acBreaker', 'label': 'AC Breaker'},
+    {'key': 'pipeLength34', 'label': 'PVC Pipe 3/4"'},
+    {'key': 'wire7029', 'label': 'Wire 7/0.29'},
+    {'key': 'socket', 'label': 'Sockets'},
+    {'key': 'dcBreaker', 'label': 'DC Breaker'},
+    {'key': 'pipeLength1', 'label': 'PVC Pipe 1"'}, // new
+    {'key': 'acWire4mm', 'label': 'Wire 4mm (AC)'},
+    {'key': 'changeOver', 'label': 'Change Over Switch'},
+    {'key': 'screw', 'label': 'Screws'},
+    {'key': 'dcWire4mm', 'label': 'Wire 4mm (DC)'},
+    {'key': 'indicationLights', 'label': 'Indication Lights'},
+    {'key': 'mc4Connector', 'label': 'MC4 Connectors'},
+    {'key': 'flexiblePipe34', 'label': 'Flexible Pipe 3/4"'},
+    {'key': 'rawalPlug', 'label': 'Rawal Plugs'},
+    {'key': 'wire4076', 'label': 'Wire 40/0.76'},
+    {'key': 'duct25x25', 'label': 'Duct 25x25'},
+    {'key': 'batteryWire', 'label': 'Battery Cable'},
+    {'key': 'flexiblePipe1', 'label': 'Flexible Pipe 1"'},
+    {'key': 'duct1x1', 'label': 'Duct 1x1'},
+    {'key': 'thimble', 'label': 'Thimble Lugs'},
+    {'key': 'clip34', 'label': 'Clips 3/4"'},
+    {'key': 'band', 'label': 'Pipe Bands'},
+  ];
+}
+
 class Form3View extends StatefulWidget {
   final PersonModel person;
   final bool readOnly;
@@ -57,6 +88,7 @@ class _Form3ViewState extends State<Form3View> {
     'acWire4mm': TextEditingController(),
     'dcWire4mm': TextEditingController(),
     'changeOver': TextEditingController(),
+    'screw': TextEditingController(),
     'wire4076': TextEditingController(),
     'rawalPlug': TextEditingController(),
     'duct25x25': TextEditingController(),
@@ -538,32 +570,9 @@ class _Form3ViewState extends State<Form3View> {
 
               // Section 3: Bill of Materials
               _buildSectionCard('3. Bill of Materials Inventory', [
-                _buildMaterialField('dbBox', 'DB Box'),
-                _buildMaterialField('nutBolts', 'Nuts & Bolts'),
-                _buildMaterialField('clip1', 'Clips 1"'),
-                _buildMaterialField('insulationTape', 'Insulation Tape'),
-                _buildMaterialField('acBreaker', 'AC Breaker'),
-                _buildMaterialField('pipeLength34', 'PVC Pipe 3/4"'),
-                _buildMaterialField('wire7029', 'Wire 7/0.29'),
-                _buildMaterialField('dcBreaker', 'DC Breaker'),
-                _buildMaterialField('pipeLength1', 'PVC Pipe 1"'),
-                _buildMaterialField('acWire4mm', 'Wire 4mm (AC)'),
-                _buildMaterialField('dcWire4mm', 'Wire 4mm (DC)'),
-                _buildMaterialField('changeOver', 'Changeover Switch'),
-                _buildMaterialField('screw', 'Screws'),
-                _buildMaterialField('wire4076', 'Wire 40/0.76'),
-                _buildMaterialField('indicationLights', 'Indication Lights'),
-                _buildMaterialField('rawalPlug', 'Rawal Plugs'),
-                _buildMaterialField('duct25x25', 'Duct 25x25'),
-                _buildMaterialField('mc4Connector', 'MC4 Connectors'),
-                _buildMaterialField('flexiblePipe34', 'Flexible Pipe 3/4"'),
-                _buildMaterialField('duct1x1', 'Duct 1x1'),
-                _buildMaterialField('batteryWire', 'Battery Cable'),
-                _buildMaterialField('flexiblePipe1', 'Flexible Pipe 1"'),
-                _buildMaterialField('band', 'Pipe Bends'),
-                _buildMaterialField('thimble', 'Thimble Lugs'),
-                _buildMaterialField('clip34', 'Clips 3/4"'),
-                _buildMaterialField('socket', 'Sockets'),
+                ...buildMaterialFieldDefinitions().map(
+                  (item) => _buildMaterialField(item['key']!, item['label']!),
+                ),
               ]),
               const SizedBox(height: 16),
 

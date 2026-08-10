@@ -4,6 +4,31 @@ import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Model/person_model.dart';
 
+List<Map<String, dynamic>> buildDefaultAppliances() {
+  return [
+    {'name': 'Fan', 'watts': 80},
+    {'name': 'AC/DC Fan', 'watts': 30},
+    {'name': 'Tube Light', 'watts': 40},
+    {'name': 'LED Bulb', 'watts': 12},
+    {'name': 'Wifi Router', 'watts': 10},
+    {'name': 'AC 1-Ton-Inverter', 'watts': 1200},
+    {'name': 'AC 1.5-Ton-Inverter', 'watts': 1800},
+    {'name': 'AC 2-Ton-Inverter', 'watts': 2400},
+    {'name': 'Fridge Normal', 'watts': 300},
+    {'name': 'Fridge Inverter', 'watts': 150},
+    {'name': 'Deep Freezer Normal', 'watts': 350},
+    {'name': 'Deep Freezer Inverter', 'watts': 200},
+    {'name': 'Dispenser', 'watts': 150},
+    {'name': 'Water Pump (1/2 HP)', 'watts': 400},
+    {'name': 'Water Pump (1 HP)', 'watts': 750},
+    {'name': 'Boring Pump', 'watts': 1000},
+    {'name': 'Washing Machine', 'watts': 500},
+    {'name': 'Iron', 'watts': 1000},
+    {'name': 'Microwave', 'watts': 1200},
+    {'name': 'TV', 'watts': 100},
+  ];
+}
+
 class Form2View extends StatefulWidget {
   final PersonModel person;
   final bool readOnly;
@@ -33,6 +58,7 @@ class _Form2ViewState extends State<Form2View> {
   final _remarksController = TextEditingController();
 
   String? _selectedFinanceExpectation;
+  String? _selectedAlternativeBackup;
   bool _showSolarSpecificFields = false;
 
   bool _isSavingDraft = false;
@@ -56,23 +82,7 @@ class _Form2ViewState extends State<Form2View> {
   }
 
   void _initAppliances() {
-    final defaultData = [
-      {'name': 'Fan', 'watts': 80},
-      {'name': 'LED Bulb', 'watts': 12},
-      {'name': 'AC 1-Ton-Inverter', 'watts': 1200},
-      {'name': 'AC 1.5-Ton-Inverter', 'watts': 1800},
-      {'name': 'AC 2-Ton-Inverter', 'watts': 2400},
-      {'name': 'Fridge Normal', 'watts': 300},
-      {'name': 'Fridge Inverter', 'watts': 150},
-      {'name': 'Deep Freezer Normal', 'watts': 350},
-      {'name': 'Deep Freezer Inverter', 'watts': 200},
-      {'name': 'Water Pump (1/2 HP)', 'watts': 400},
-      {'name': 'Water Pump (1 HP)', 'watts': 750},
-      {'name': 'Washing Machine', 'watts': 500},
-      {'name': 'Iron', 'watts': 1000},
-      {'name': 'Microwave', 'watts': 1200},
-      {'name': 'TV', 'watts': 100},
-    ];
+    final defaultData = buildDefaultAppliances();
 
     _appliances = defaultData.map((item) {
       return {
@@ -116,6 +126,7 @@ class _Form2ViewState extends State<Form2View> {
           _existingBatteryController.text = ans['existingBattery'] ?? '';
           _financeByMuminController.text = ans['financeByMumin'] ?? '';
           _selectedFinanceExpectation = ans['financeExpectation'];
+          _selectedAlternativeBackup = ans['alternativeBackup'];
           _filledByStaffController.text = ans['filledByStaff'] ?? '';
           _landlordNameController.text = ans['landlordName'] ?? '';
           _landlordContactController.text = ans['landlordContact'] ?? '';
@@ -182,7 +193,7 @@ class _Form2ViewState extends State<Form2View> {
 
   double _calculateCompletionRatio() {
     int filledCount = 0;
-    int trackedFields = 5;
+    int trackedFields = 6;
 
     if (_showSolarSpecificFields) {
       trackedFields += 7;
@@ -197,6 +208,7 @@ class _Form2ViewState extends State<Form2View> {
 
     if (_financeByMuminController.text.trim().isNotEmpty) filledCount++;
     if (_selectedFinanceExpectation != null) filledCount++;
+    if (_selectedAlternativeBackup != null) filledCount++;
     if (_filledByStaffController.text.trim().isNotEmpty) filledCount++;
     if (_landlordNameController.text.trim().isNotEmpty) filledCount++;
     if (_landlordContactController.text.trim().isNotEmpty) filledCount++;
@@ -233,6 +245,7 @@ class _Form2ViewState extends State<Form2View> {
       'existingBattery': _existingBatteryController.text.trim(),
       'financeByMumin': _financeByMuminController.text.trim(),
       'financeExpectation': _selectedFinanceExpectation ?? '',
+      'alternativeBackup': _selectedAlternativeBackup ?? '',
       'filledByStaff': _filledByStaffController.text.trim(),
       'landlordName': _landlordNameController.text.trim(),
       'landlordContact': _landlordContactController.text.trim(),
@@ -630,6 +643,12 @@ class _Form2ViewState extends State<Form2View> {
                       'Existing Battery',
                     ),
                   ],
+                  _buildDropdownField(
+                    _selectedAlternativeBackup,
+                    'Alternative Backup',
+                    ['UPS', 'SOLAR SYSTEM'],
+                    (val) => setState(() => _selectedAlternativeBackup = val),
+                  ),
                   _buildTextField(
                     _financeByMuminController,
                     'Finance by Mumin',
