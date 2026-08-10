@@ -67,6 +67,11 @@ class _Form2ViewState extends State<Form2View> {
 
   // Updated options to only Yes and No
   final List<String> _financeExpectationOptions = ['Yes', 'No'];
+  final List<String> _alternativeBackupOptions = [
+    'None',
+    'UPS',
+    'SOLAR SYSTEM',
+  ];
 
   // Appliances initialized with Watts, Controllers for Watts & Qty
   late List<Map<String, dynamic>> _appliances;
@@ -646,7 +651,7 @@ class _Form2ViewState extends State<Form2View> {
                   _buildDropdownField(
                     _selectedAlternativeBackup,
                     'Alternative Backup',
-                    ['UPS', 'SOLAR SYSTEM'],
+                    _alternativeBackupOptions,
                     (val) => setState(() => _selectedAlternativeBackup = val),
                   ),
                   _buildTextField(
