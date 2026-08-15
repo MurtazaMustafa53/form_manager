@@ -17,7 +17,7 @@ class _DashboardViewState extends State<DashboardView> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedStatusFilter = 'All';
 
-  // Active Chart Stage Filter: null = All, 1 = Form 1 Only (33%), 2 = Form 1 & 2 (66%), 3 = All Forms (100%), 4 = Fully Completed Cards
+  // Active Chart Stage Filter: null = All, 1..5 = minimum form number submitted.
   int? _activeFormFilter;
 
   int _sortColumnIndex = 1;
@@ -134,19 +134,10 @@ class _DashboardViewState extends State<DashboardView> {
     final query = _searchController.text.trim().toLowerCase();
 
     final filtered = people.where((person) {
-      // 1. Chart Stage Funnel Filter Logic
+      // 1. Chart Stage Filter Logic
       if (_activeFormFilter != null) {
-        if (_activeFormFilter == 1) {
-          // Exactly Form 1 filled (Completed count == 1, or approx 33%)
-          if (person.completedFormCount != 1) return false;
-        } else if (_activeFormFilter == 2) {
-          // Exactly Form 1 & 2 filled (Completed count == 2, or approx 66%)
-          if (person.completedFormCount != 2) return false;
-        } else if (_activeFormFilter == 3) {
-          // Fully completed all forms (100%)
-          if (!person.isComplete) return false;
-        } else if (_activeFormFilter == 4) {
-          if (!person.isComplete) return false;
+        if (person.completedFormCount < _activeFormFilter!) {
+          return false;
         }
       }
 
@@ -305,25 +296,23 @@ class _DashboardViewState extends State<DashboardView> {
               .length;
           final displayedPeople = _getFilteredAndSortedPeople(people);
 
-          // Specific Stage Counts & Baselines for "X/Y" display:
-          // Card 1 (Form 1 Only -> 33%): Count of profiles with exactly 1 form out of total profiles
-          final form1OnlyCount = people
-              .where((p) => p.completedFormCount == 1)
-              .length;
+          final formSubmissionCounts = List.generate(
+            PersonModel.totalForms,
+            (index) =>
+                people.where((p) => p.completedFormCount >= index + 1).length,
+          );
 
-          // Card 2 (Forms 1 & 2 -> 66%): Count of profiles with exactly 2 forms out of profiles having at least 1 form
-          final form1And2Count = people
-              .where((p) => p.completedFormCount == 2)
-              .length;
-          final form1TotalBase = people
-              .where((p) => p.completedFormCount >= 1)
-              .length;
+          final form1SubmittedCount = formSubmissionCounts[0];
+          final form2SubmittedCount = formSubmissionCounts[1];
+          final form3SubmittedCount = formSubmissionCounts[2];
+          final form4SubmittedCount = formSubmissionCounts[3];
+          final form5SubmittedCount = formSubmissionCounts[4];
 
-          // Card 3 (All Completed -> 100%): Count of fully completed profiles out of profiles having at least 2 forms
-          final allCompletedCount = people.where((p) => p.isComplete).length;
-          final form2TotalBase = people
-              .where((p) => p.completedFormCount >= 2)
-              .length;
+          final form1Denominator = totalProfiles;
+          final form2Denominator = form1SubmittedCount;
+          final form3Denominator = form2SubmittedCount;
+          final form4Denominator = form3SubmittedCount;
+          final form5Denominator = form4SubmittedCount;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -528,7 +517,7 @@ class _DashboardViewState extends State<DashboardView> {
                                 BoxShadow(
                                   color: const Color(
                                     0xFF10B981,
-                                  ).withOpacity(0.3),
+                                  ).withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -594,7 +583,7 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 const SizedBox(height: 24),
 
-                // Interactive Progress Cards (Form 1 Only, Form 1 & 2, All Completed with X/Y format)
+                // Progress cards show how many profiles have submitted each form.
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -608,6 +597,14 @@ class _DashboardViewState extends State<DashboardView> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          const Text(
+                            'Form Progress',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Color(0xFF1E293B),
+                            ),
+                          ),
                           if (_activeFormFilter != null)
                             OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
@@ -629,43 +626,58 @@ class _DashboardViewState extends State<DashboardView> {
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          // Card 1: Form 1 Filled (~33% Completed)
                           Expanded(
                             child: _buildInteractiveCascadingCard(
                               stageNumber: 1,
-                              title: 'Form 1 Filled (33%)',
-                              completed: form1OnlyCount,
-                              total: totalProfiles,
-                              subtitle: 'Out of $totalProfiles total profiles',
+                              title: 'Form 1 Submitted',
+                              completed: form1SubmittedCount,
+                              total: form1Denominator,
+                              subtitle: 'Out of $form1Denominator profiles',
                               color: const Color(0xFF2563EB),
                             ),
                           ),
                           const SizedBox(width: 16),
-
-                          // Card 2: Form 1 & Form 2 Filled (~66% Completed)
                           Expanded(
                             child: _buildInteractiveCascadingCard(
                               stageNumber: 2,
-                              title: 'Forms 1 & 2 Filled (66%)',
-                              completed: form1And2Count,
-                              total: form1TotalBase,
-                              subtitle:
-                                  'Out of $form1TotalBase Form 1 completed',
+                              title: 'Form 2 Submitted',
+                              completed: form2SubmittedCount,
+                              total: form2Denominator,
+                              subtitle: 'Out of $form2Denominator profiles',
                               color: const Color(0xFF10B981),
                             ),
                           ),
                           const SizedBox(width: 16),
-
-                          // Card 3: All Forms Completed (100% Completed)
                           Expanded(
                             child: _buildInteractiveCascadingCard(
                               stageNumber: 3,
-                              title: 'All Forms Completed (100%)',
-                              completed: allCompletedCount,
-                              total: form2TotalBase,
-                              subtitle:
-                                  'Out of $form2TotalBase Form 2 completed',
+                              title: 'Form 3 Submitted',
+                              completed: form3SubmittedCount,
+                              total: form3Denominator,
+                              subtitle: 'Out of $form3Denominator profiles',
                               color: const Color(0xFF8B5CF6),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildInteractiveCascadingCard(
+                              stageNumber: 4,
+                              title: 'Form 4 Submitted',
+                              completed: form4SubmittedCount,
+                              total: form4Denominator,
+                              subtitle: 'Out of $form4Denominator profiles',
+                              color: const Color(0xFFF59E0B),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildInteractiveCascadingCard(
+                              stageNumber: 5,
+                              title: 'Form 5 Submitted',
+                              completed: form5SubmittedCount,
+                              total: form5Denominator,
+                              subtitle: 'Out of $form5Denominator profiles',
+                              color: const Color(0xFFEF4444),
                             ),
                           ),
                         ],
@@ -910,7 +922,7 @@ class _DashboardViewState extends State<DashboardView> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: isSelected
-                ? color.withOpacity(0.08)
+                ? color.withValues(alpha: 0.08)
                 : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(10),
             border: Border.all(

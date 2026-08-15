@@ -26,6 +26,7 @@ class AppProvider extends ChangeNotifier {
   bool get isDev => _currentUser?.isDev ?? false;
   bool get isAdmin => _currentUser?.isAdmin ?? false;
   bool get isViewer => _currentUser?.isViewer ?? false;
+  bool get isFinance => _currentUser?.isFinance ?? false;
   bool get isLoggedIn => _currentUser != null;
 
   AppProvider() {
@@ -44,6 +45,8 @@ class AppProvider extends ChangeNotifier {
         role = UserRole.dev;
       } else if (savedRole == 'admin') {
         role = UserRole.admin;
+      } else if (savedRole == 'finance') {
+        role = UserRole.finance;
       } else {
         role = UserRole.viewer;
       }
@@ -66,14 +69,23 @@ class AppProvider extends ChangeNotifier {
       role = UserRole.dev;
     } else if (cleanEmail == 'admin@ibm.com' && password == 'admin123') {
       role = UserRole.admin;
+    } else if (cleanEmail == 'finance@ibm.com' && password == 'finance123') {
+      role = UserRole.finance;
     } else if (cleanEmail == 'viewer@ibm.com' && password == 'viewer123') {
       role = UserRole.viewer;
     }
 
     if (role != null) {
-      String roleString = role == UserRole.dev
-          ? 'dev'
-          : (role == UserRole.admin ? 'admin' : 'viewer');
+      String roleString;
+      if (role == UserRole.dev) {
+        roleString = 'dev';
+      } else if (role == UserRole.admin) {
+        roleString = 'admin';
+      } else if (role == UserRole.finance) {
+        roleString = 'finance';
+      } else {
+        roleString = 'viewer';
+      }
 
       _currentUser = UserModel(
         uid: '${roleString}_01',
@@ -111,8 +123,10 @@ class AppProvider extends ChangeNotifier {
 
   /// Save draft locally via local storage controller
   Future<void> saveDraft(FormDataModel formData) async {
-    if (!isAdmin && !isDev) {
-      throw Exception('Unauthorized: only admin and dev can save drafts.');
+    // Allow admin/dev to save drafts for any form.
+    // Allow finance role to save drafts only for the finance form (formNumber 5).
+    if (!(isAdmin || isDev || (isFinance && formData.formNumber == 5))) {
+      throw Exception('Unauthorized: insufficient permissions to save draft.');
     }
     await LocalStorageController.saveFormDraft(formData);
     notifyListeners();
@@ -133,8 +147,9 @@ class AppProvider extends ChangeNotifier {
 
   /// Submit Form to Firebase and clear the local draft cache
   Future<void> submitFormToFirebase(FormDataModel formData) async {
-    if (!isAdmin && !isDev) {
-      throw Exception('Unauthorized: only admin and dev can submit forms.');
+    // Allow admin/dev to submit any form. Allow finance role to submit only the finance form.
+    if (!(isAdmin || isDev || (isFinance && formData.formNumber == 5))) {
+      throw Exception('Unauthorized: insufficient permissions to submit form.');
     }
     await _firebaseController.submitForm(formData);
     await LocalStorageController.clearFormDraft(

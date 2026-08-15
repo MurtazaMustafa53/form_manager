@@ -21,10 +21,10 @@ List<Map<String, String>> buildMaterialFieldDefinitions() {
     {'key': 'screw', 'label': 'Screws'},
     {'key': 'dcWire4mm', 'label': 'Wire 4mm (DC)'},
     {'key': 'indicationLights', 'label': 'Indication Lights'},
-    {'key': 'rawalPlug', 'label': 'Rawal Plugs'},
-    {'key': 'wire4076', 'label': 'Wire 40/0.76'},
     {'key': 'mc4Connector', 'label': 'MC4 Connectors'},
     {'key': 'flexiblePipe34', 'label': 'Flexible Pipe 3/4"'},
+    {'key': 'rawalPlug', 'label': 'Rawal Plugs'},
+    {'key': 'wire4076', 'label': 'Wire 40/0.76'},
     {'key': 'duct25x25', 'label': 'Duct 25x25'},
     {'key': 'batteryWire', 'label': 'Battery Cable'},
     {'key': 'flexiblePipe1', 'label': 'Flexible Pipe 1"'},
@@ -39,8 +39,7 @@ class Form3View extends StatefulWidget {
   final PersonModel person;
   final bool readOnly;
 
-  const Form3View({Key? key, required this.person, this.readOnly = false})
-    : super(key: key);
+  const Form3View({super.key, required this.person, this.readOnly = false});
 
   @override
   State<Form3View> createState() => _Form3ViewState();
@@ -141,12 +140,14 @@ class _Form3ViewState extends State<Form3View> {
         _mainBoardType = ans['mainBoardType'];
         _dcWireLengthController.text = ans['dcWireLength'] ?? '';
         _acWireLengthController.text = ans['acWireLength'] ?? '';
-        _upsWiring = ans['upsWiring'];
+        _upsWiring = _coerceBool(ans['upsWiring']);
         _upsWiringLengthController.text = ans['upsWiringLength'] ?? '';
         _inverterInstallationAreaController.text =
             ans['inverterInstallationArea'] ?? '';
-        _separateRoomWiseBreakers = ans['separateRoomWiseBreakers'];
-        _waterConnectionOnRoof = ans['waterConnectionOnRoof'];
+        _separateRoomWiseBreakers = _coerceBool(
+          ans['separateRoomWiseBreakers'],
+        );
+        _waterConnectionOnRoof = _coerceBool(ans['waterConnectionOnRoof']);
         _earthingLengthController.text = ans['earthingLength'] ?? '';
 
         _remarksController.text = ans['remarks'] ?? '';
@@ -194,6 +195,18 @@ class _Form3ViewState extends State<Form3View> {
     super.dispose();
   }
 
+  bool? _coerceBool(dynamic v) {
+    if (v == null) return null;
+    if (v is bool) return v;
+    if (v is String) {
+      final s = v.toLowerCase().trim();
+      if (s == 'true' || s == 'yes' || s == '1') return true;
+      if (s == 'false' || s == 'no' || s == '0') return false;
+    }
+    if (v is num) return v != 0;
+    return null;
+  }
+
   double _calculateCompletionRatio() {
     int filledCount = 0;
     const int trackedFields = 12;
@@ -205,8 +218,9 @@ class _Form3ViewState extends State<Form3View> {
     if (_dcWireLengthController.text.trim().isNotEmpty) filledCount++;
     if (_acWireLengthController.text.trim().isNotEmpty) filledCount++;
     if (_upsWiring != null) filledCount++;
-    if (_inverterInstallationAreaController.text.trim().isNotEmpty)
+    if (_inverterInstallationAreaController.text.trim().isNotEmpty) {
       filledCount++;
+    }
     if (_separateRoomWiseBreakers != null) filledCount++;
     if (_waterConnectionOnRoof != null) filledCount++;
     if (_earthingLengthController.text.trim().isNotEmpty) filledCount++;
@@ -344,7 +358,7 @@ class _Form3ViewState extends State<Form3View> {
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: items.contains(value) ? value : null,
         isExpanded: true,
         decoration: InputDecoration(
           labelText: label,
@@ -368,7 +382,7 @@ class _Form3ViewState extends State<Form3View> {
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<bool>(
-        value: value,
+        initialValue: [true, false].contains(value) ? value : null,
         isExpanded: true,
         decoration: InputDecoration(
           labelText: label,

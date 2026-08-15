@@ -5,6 +5,8 @@ import 'package:form_manager/Model/person_model.dart';
 import 'package:form_manager/Views/Forms/form1_view.dart';
 import 'package:form_manager/Views/Forms/form2_view.dart';
 import 'package:form_manager/Views/Forms/form3_view.dart';
+import 'package:form_manager/Views/Forms/form4_veiw.dart';
+import 'package:form_manager/Views/Forms/form_finance_view.dart';
 
 class ProfileDetailView extends StatelessWidget {
   final PersonModel person;
@@ -25,6 +27,12 @@ class ProfileDetailView extends StatelessWidget {
       case 2:
         targetForm = Form2View(person: person, readOnly: readOnly);
         break;
+      case 4:
+        targetForm = Form4View(person: person, readOnly: readOnly);
+        break;
+      case 5:
+        targetForm = FormFinanceView(person: person);
+        break;
       case 3:
       default:
         targetForm = Form3View(person: person, readOnly: readOnly);
@@ -41,7 +49,7 @@ class ProfileDetailView extends StatelessWidget {
       (p) => p.id == person.id,
       orElse: () => person,
     );
-    final int completedCount = currentPerson.completedFormCount.clamp(0, 3);
+    final int completedCount = currentPerson.completedFormCount.clamp(0, 5);
     final double progressRatio = currentPerson.progressPercentage;
     final int percentage = (progressRatio * 100).toInt();
 
@@ -71,7 +79,9 @@ class ProfileDetailView extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 36,
-                      backgroundColor: const Color(0xFF2563EB).withOpacity(0.1),
+                      backgroundColor: const Color(
+                        0xFF2563EB,
+                      ).withValues(alpha: 0.1),
                       child: Text(
                         currentPerson.name.isNotEmpty
                             ? currentPerson.name[0].toUpperCase()
@@ -165,7 +175,7 @@ class ProfileDetailView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '$completedCount of 3',
+                              '$completedCount of 5',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -295,6 +305,20 @@ class ProfileDetailView extends StatelessWidget {
                       formNumber: 3,
                       formTitle: 'Form 3: Solar Technical Audit',
                       isCompleted: currentPerson.completedFormCount >= 3,
+                    ),
+                    const Divider(height: 24),
+                    _buildFormChecklistItem(
+                      context,
+                      formNumber: 4,
+                      formTitle: 'Form 4: Financial Survey',
+                      isCompleted: currentPerson.completedFormCount >= 4,
+                    ),
+                    const Divider(height: 24),
+                    _buildFormChecklistItem(
+                      context,
+                      formNumber: 5,
+                      formTitle: 'Finance: Financial Summary',
+                      isCompleted: currentPerson.completedFormCount >= 5,
                     ),
                   ],
                 ),

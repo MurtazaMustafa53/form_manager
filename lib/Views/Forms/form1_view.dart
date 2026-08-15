@@ -67,12 +67,8 @@ class _Form1ViewState extends State<Form1View> {
     _landlordNameController = TextEditingController();
     _landlordContactController = TextEditingController();
 
-    if (widget.person.willingToSolar != null) {
-      _willingToSolar = widget.person.willingToSolar! ? 'Yes' : 'No';
-    }
-    if (widget.person.landlordApproval != null) {
-      _landlordApproval = widget.person.landlordApproval! ? 'Yes' : 'No';
-    }
+    _willingToSolar = widget.person.willingToSolar! ? 'Yes' : 'No';
+    _landlordApproval = widget.person.landlordApproval! ? 'Yes' : 'No';
 
     _isReadOnly =
         widget.readOnly ||
@@ -178,7 +174,7 @@ class _Form1ViewState extends State<Form1View> {
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: items.contains(value) ? value : null,
         isExpanded: true,
         decoration: InputDecoration(
           labelText: label,
@@ -348,7 +344,7 @@ class _Form1ViewState extends State<Form1View> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Calculated Total Watts: ${widget.person.totalWattage?.toInt() ?? 0} W',
+                          'Calculated Total Watts: ${widget.person.totalWattage.toInt() ?? 0} W',
                           style: const TextStyle(
                             color: Color(0xFF2563EB),
                             fontWeight: FontWeight.bold,

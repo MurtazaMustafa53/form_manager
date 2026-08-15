@@ -33,8 +33,7 @@ class Form2View extends StatefulWidget {
   final PersonModel person;
   final bool readOnly;
 
-  const Form2View({Key? key, required this.person, this.readOnly = false})
-    : super(key: key);
+  const Form2View({super.key, required this.person, this.readOnly = false});
 
   @override
   State<Form2View> createState() => _Form2ViewState();
@@ -359,7 +358,7 @@ class _Form2ViewState extends State<Form2View> {
     return SizedBox(
       width: 260,
       child: DropdownButtonFormField<String>(
-        value: value,
+        initialValue: items.contains(value) ? value : null,
         isExpanded: true,
         decoration: InputDecoration(
           labelText: label,

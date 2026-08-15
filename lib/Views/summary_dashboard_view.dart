@@ -56,6 +56,18 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           final form3People = people
               .where((p) => p.completedFormCount >= 3)
               .toList();
+          final form4People = people
+              .where((p) => p.completedFormCount >= 4)
+              .toList();
+          final form5People = people
+              .where((p) => p.completedFormCount >= 5)
+              .toList();
+
+          final form1Denominator = people.length;
+          final form2Denominator = form1People.length;
+          final form3Denominator = form2People.length;
+          final form4Denominator = form3People.length;
+          final form5Denominator = form4People.length;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -66,41 +78,69 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                 ValueListenableBuilder<int>(
                   valueListenable: _selectedFormTabNotifier,
                   builder: (context, currentTab, _) {
-                    return Row(
+                    double boxwidth = 360;
+                    return Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
                       children: [
-                        Expanded(
+                        SizedBox(
+                          width: boxwidth,
                           child: _buildFormTabCard(
                             formNumber: 1,
                             title: 'Form 1 Summary',
                             subtitle: 'Personal Data',
                             count: form1People.length,
-                            total: people.length,
+                            total: form1Denominator,
                             color: const Color(0xFF2563EB),
                             isSelected: currentTab == 1,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
+                        SizedBox(
+                          width: boxwidth,
                           child: _buildFormTabCard(
                             formNumber: 2,
                             title: 'Form 2 Summary',
                             subtitle: 'Appliance Inventory',
                             count: form2People.length,
-                            total: form1People.length,
+                            total: form2Denominator,
                             color: const Color(0xFF10B981),
                             isSelected: currentTab == 2,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
+                        SizedBox(
+                          width: boxwidth,
                           child: _buildFormTabCard(
                             formNumber: 3,
                             title: 'Form 3 Summary',
                             subtitle: 'Audit Data',
                             count: form3People.length,
-                            total: form2People.length,
+                            total: form3Denominator,
                             color: const Color(0xFF8B5CF6),
                             isSelected: currentTab == 3,
+                          ),
+                        ),
+                        SizedBox(
+                          width: boxwidth,
+                          child: _buildFormTabCard(
+                            formNumber: 4,
+                            title: 'Form 4 Summary',
+                            subtitle: 'Review & Approvals',
+                            count: form4People.length,
+                            total: form4Denominator,
+                            color: const Color(0xFFF59E0B),
+                            isSelected: currentTab == 4,
+                          ),
+                        ),
+                        SizedBox(
+                          width: boxwidth,
+                          child: _buildFormTabCard(
+                            formNumber: 5,
+                            title: 'Form 5 Summary',
+                            subtitle: 'Finance Finalization',
+                            count: form5People.length,
+                            total: form5Denominator,
+                            color: const Color(0xFFEF4444),
+                            isSelected: currentTab == 5,
                           ),
                         ),
                       ],
@@ -158,6 +198,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
     required bool isSelected,
   }) {
     final double percentage = total > 0 ? (count / total * 100) : 0;
+    final int totalcount = total - count;
 
     return Material(
       color: Colors.transparent,
@@ -178,7 +219,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: color.withOpacity(0.3),
+                      color: color.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -226,16 +267,40 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
               ),
               const SizedBox(height: 16),
               Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 300),
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : color,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Expanded(
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 300),
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : color,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('$count', overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Submitted out of $total',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$totalcount pending',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Text('$count Submissions'),
                   ),
                   AnimatedDefaultTextStyle(
                     duration: const Duration(milliseconds: 300),
@@ -263,10 +328,16 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
         return _buildForm2Summary(people);
       case 3:
         return _buildForm3Summary(people);
+      case 4:
+        return _buildForm4Summary(people);
+      case 5:
+        return _buildForm5Summary(people);
       default:
         return Container();
     }
   }
+
+  bool iscompleted = true;
 
   // ---------------------------------------------------------------------------
   // FORM 1 SUMMARY
@@ -321,13 +392,18 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Form 1 Details Table',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Color(0xFF1E293B),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Form 1 Details Table',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -391,10 +467,8 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
 
     for (var p in form2People) {
       grandTotalWattage += p.totalWattage ?? 0;
-      final val =
-          (p.financeAsPerExpectation != null &&
-              p.financeAsPerExpectation!.isNotEmpty)
-          ? p.financeAsPerExpectation!
+      final val = (p.financeAsPerExpectation.isNotEmpty)
+          ? p.financeAsPerExpectation
           : 'Unspecified';
       financeCounts[val] = (financeCounts[val] ?? 0) + 1;
     }
@@ -526,9 +600,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                         );
                       }),
                       DataRow(
-                        color: MaterialStateProperty.all(
-                          const Color(0xFFECFDF5),
-                        ),
+                        color: WidgetStateProperty.all(const Color(0xFFECFDF5)),
                         cells: [
                           const DataCell(
                             Text(
@@ -561,6 +633,116 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           ),
         ),
       ],
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // FORM 4 SUMMARY
+  // ---------------------------------------------------------------------------
+  Widget _buildForm4Summary(List<PersonModel> people) {
+    final form4People = people.where((p) => p.completedFormCount >= 4).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Form 4 Submitted: ${form4People.length} / ${people.length}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (form4People.isEmpty)
+            const Text('No Form 4 submissions found.')
+          else
+            SizedBox(
+              width: double.infinity,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Name')),
+                  DataColumn(label: Text('ITS')),
+                  DataColumn(label: Text('Contact')),
+                ],
+                rows: form4People.map((person) {
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(person.name)),
+                      DataCell(Text(person.its.toString())),
+                      DataCell(Text(person.contact)),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // FORM 5 SUMMARY
+  // ---------------------------------------------------------------------------
+  Widget _buildForm5Summary(List<PersonModel> people) {
+    final form5People = people.where((p) => p.completedFormCount >= 5).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Form 5 Submitted: ${form5People.length} / ${people.length}',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          const SizedBox(height: 16),
+          if (form5People.isEmpty)
+            const Text('No Form 5 submissions found.')
+          else
+            SizedBox(
+              width: double.infinity,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Name')),
+                  DataColumn(label: Text('ITS')),
+                  DataColumn(label: Text('Solar Panels')),
+                  DataColumn(label: Text('Inverters')),
+                  DataColumn(label: Text('Battery')),
+                  DataColumn(label: Text('Structure')),
+                ],
+                rows: form5People.map((person) {
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(person.name)),
+                      DataCell(Text(person.its.toString())),
+                      DataCell(Text(person.numberOfSolarPanels.toString())),
+                      DataCell(Text(person.numberOfInverter.toString())),
+                      DataCell(Text(person.lithiumBattery.toString())),
+                      DataCell(Text(person.structure)),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -651,8 +833,9 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           mainBoardCounts[mainBoard] = (mainBoardCounts[mainBoard] ?? 0) + 1;
 
           if (answers['waterConnectionOnRoof'] == true) waterTapCount++;
-          if (answers['separateRoomWiseBreakers'] == true)
+          if (answers['separateRoomWiseBreakers'] == true) {
             separateBreakersCount++;
+          }
           if (answers['upsWiring'] == true) upsWiringCount++;
 
           totalDcWireMeters +=

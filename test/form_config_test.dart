@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:form_manager/Model/Form%20Mappers/form5_mapper.dart';
+import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Views/Forms/form2_view.dart';
 import 'package:form_manager/Views/Forms/form3_view.dart';
 
@@ -56,6 +58,35 @@ void main() {
       expect(keys.indexOf('flexiblePipe1'), lessThan(keys.indexOf('duct1x1')));
       expect(keys.indexOf('thimble'), lessThan(keys.indexOf('band')));
       expect(keys.indexOf('clip34'), lessThan(keys.indexOf('band')));
+    });
+
+    test('finance mapper includes the solar installation fields', () {
+      final update = Form5Mapper().toPersonUpdates(
+        FormDataModel(
+          id: 'person_1_form_5',
+          personId: 'person_1',
+          formNumber: 5,
+          filledByStaffId: 'staff_1',
+          updatedAt: DateTime.now(),
+          answers: {
+            'summaryTotal': 25000,
+            'materials': [],
+            'financeByMumin': 'Yes',
+            'financeExpectation': 'Yes',
+            'numberOfSolarPanels': 2,
+            'numberOfInverter': 1,
+            'lithiumBattery': 1,
+            'structure': 'elevated',
+            'structureQuantity': 1,
+          },
+        ),
+      );
+
+      expect(update['numberOfSolarPanels'], 2);
+      expect(update['numberOfInverter'], 1);
+      expect(update['lithiumBattery'], 1);
+      expect(update['structure'], 'elevated');
+      expect(update['structureQuantity'], 1);
     });
   });
 }

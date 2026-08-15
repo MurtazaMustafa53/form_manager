@@ -1,4 +1,4 @@
-enum UserRole { dev, admin, viewer }
+enum UserRole { dev, admin, viewer, finance }
 
 class UserModel {
   final String uid;
@@ -10,6 +10,7 @@ class UserModel {
   bool get isDev => role == UserRole.dev;
   bool get isAdmin => role == UserRole.admin;
   bool get isViewer => role == UserRole.viewer;
+  bool get isFinance => role == UserRole.finance;
 
   // Permission Restrictions
   bool get canEdit => role == UserRole.admin || role == UserRole.dev;
@@ -24,6 +25,9 @@ class UserModel {
         break;
       case 'admin':
         parsedRole = UserRole.admin;
+        break;
+      case 'finance':
+        parsedRole = UserRole.finance;
         break;
       default:
         parsedRole = UserRole.viewer;

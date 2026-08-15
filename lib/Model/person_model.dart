@@ -21,10 +21,17 @@ class PersonModel {
   // Form 3 / Electrical Flags
   final bool hasExistingUps;
 
+  // Form 5 / Finance configuration
+  final int numberOfSolarPanels;
+  final int numberOfInverter;
+  final int lithiumBattery;
+  final String structure;
+  final int structureQuantity;
+
   // Completion Tracking
   final int completedFormCount;
 
-  static const int totalForms = 3;
+  static const int totalForms = 5;
 
   PersonModel({
     required this.id,
@@ -40,6 +47,11 @@ class PersonModel {
     this.financeByMomin = 'No',
     this.financeAsPerExpectation = 'Unspecified',
     this.hasExistingUps = false,
+    this.numberOfSolarPanels = 2,
+    this.numberOfInverter = 1,
+    this.lithiumBattery = 1,
+    this.structure = 'elevated',
+    this.structureQuantity = 1,
     this.completedFormCount = 0,
   });
 
@@ -66,6 +78,11 @@ class PersonModel {
     String? financeByMomin,
     String? financeAsPerExpectation,
     bool? hasExistingUps,
+    int? numberOfSolarPanels,
+    int? numberOfInverter,
+    int? lithiumBattery,
+    String? structure,
+    int? structureQuantity,
     int? completedFormCount,
   }) {
     return PersonModel(
@@ -84,6 +101,11 @@ class PersonModel {
       financeAsPerExpectation:
           financeAsPerExpectation ?? this.financeAsPerExpectation,
       hasExistingUps: hasExistingUps ?? this.hasExistingUps,
+      numberOfSolarPanels: numberOfSolarPanels ?? this.numberOfSolarPanels,
+      numberOfInverter: numberOfInverter ?? this.numberOfInverter,
+      lithiumBattery: lithiumBattery ?? this.lithiumBattery,
+      structure: structure ?? this.structure,
+      structureQuantity: structureQuantity ?? this.structureQuantity,
       completedFormCount: completedFormCount ?? this.completedFormCount,
     );
   }
@@ -91,7 +113,7 @@ class PersonModel {
   factory PersonModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
 
-    bool _parseBool(dynamic value, {bool defaultValue = false}) {
+    bool parseBool(dynamic value, {bool defaultValue = false}) {
       if (value == null) return defaultValue;
       if (value is bool) return value;
       if (value is String) {
@@ -103,19 +125,19 @@ class PersonModel {
       return defaultValue;
     }
 
-    int _parseInt(dynamic value) {
+    int parseInt(dynamic value) {
       if (value is num) return value.toInt();
       if (value is String) return int.tryParse(value) ?? 0;
       return 0;
     }
 
-    int? _parseNullableInt(dynamic value) {
+    int? parseNullableInt(dynamic value) {
       if (value is num) return value.toInt();
       if (value is String) return int.tryParse(value);
       return null;
     }
 
-    double _parseDouble(dynamic value, {double defaultValue = 0.0}) {
+    double parseDouble(dynamic value, {double defaultValue = 0.0}) {
       if (value is num) return value.toDouble();
       if (value is String) return double.tryParse(value) ?? defaultValue;
       return defaultValue;
@@ -124,19 +146,32 @@ class PersonModel {
     return PersonModel(
       id: doc.id,
       name: data['name']?.toString() ?? '',
-      its: _parseInt(data['its']),
-      sfNo: _parseNullableInt(data['sfNo']),
+      its: parseInt(data['its']),
+      sfNo: parseNullableInt(data['sfNo']),
       contact: data['contact']?.toString() ?? '',
       address: data['address']?.toString() ?? '',
-      willingToSolar: _parseBool(data['willingToSolar']),
-      landlordApproval: _parseBool(data['landlordApproval']),
-      hasExistingSolarSystem: _parseBool(data['hasExistingSolarSystem']),
-      totalWattage: _parseDouble(data['totalWattage'], defaultValue: 0.0),
+      willingToSolar: parseBool(data['willingToSolar']),
+      landlordApproval: parseBool(data['landlordApproval']),
+      hasExistingSolarSystem: parseBool(data['hasExistingSolarSystem']),
+      totalWattage: parseDouble(data['totalWattage'], defaultValue: 0.0),
       financeByMomin: data['financeByMomin']?.toString() ?? 'No',
       financeAsPerExpectation:
           data['financeAsPerExpectation']?.toString() ?? 'Unspecified',
-      hasExistingUps: _parseBool(data['hasExistingUps']),
-      completedFormCount: _parseInt(data['completedFormCount']),
+      hasExistingUps: parseBool(data['hasExistingUps']),
+      numberOfSolarPanels: parseInt(data['numberOfSolarPanels']) == 0
+          ? 2
+          : parseInt(data['numberOfSolarPanels']),
+      numberOfInverter: parseInt(data['numberOfInverter']) == 0
+          ? 1
+          : parseInt(data['numberOfInverter']),
+      lithiumBattery: parseInt(data['lithiumBattery']) == 0
+          ? 1
+          : parseInt(data['lithiumBattery']),
+      structure: data['structure']?.toString() ?? 'elevated',
+      structureQuantity: parseInt(data['structureQuantity']) == 0
+          ? 1
+          : parseInt(data['structureQuantity']),
+      completedFormCount: parseInt(data['completedFormCount']),
     );
   }
 
@@ -155,6 +190,11 @@ class PersonModel {
       'financeByMomin': financeByMomin,
       'financeAsPerExpectation': financeAsPerExpectation,
       'hasExistingUps': hasExistingUps,
+      'numberOfSolarPanels': numberOfSolarPanels,
+      'numberOfInverter': numberOfInverter,
+      'lithiumBattery': lithiumBattery,
+      'structure': structure,
+      'structureQuantity': structureQuantity,
       'completedFormCount': completedFormCount,
     };
   }
