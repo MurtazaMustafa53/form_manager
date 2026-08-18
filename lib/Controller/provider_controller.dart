@@ -231,10 +231,12 @@ class AppProvider extends ChangeNotifier {
         'Unauthorized: Only Dev, Admin, or Finance can export data.',
       );
     }
-    final form1People = _people
-        .where((p) => p.completedFormCount >= 1)
-        .toList();
-    await ExcelService.exportForm1Data(form1People);
+    final forms = await _firebaseController.getSubmittedForms(formNumber: 1);
+    await ExcelService.exportSubmittedFormData(
+      forms,
+      allPeople: _people,
+      formNumber: 1,
+    );
   }
 
   /// Export Form 2 data to Excel (Dev, Admin, Finance allowed)
@@ -244,10 +246,12 @@ class AppProvider extends ChangeNotifier {
         'Unauthorized: Only Dev, Admin, or Finance can export data.',
       );
     }
-    final form2People = _people
-        .where((p) => p.completedFormCount >= 2)
-        .toList();
-    await ExcelService.exportForm2Data(form2People);
+    final forms = await _firebaseController.getSubmittedForms(formNumber: 2);
+    await ExcelService.exportSubmittedFormData(
+      forms,
+      allPeople: _people,
+      formNumber: 2,
+    );
   }
 
   /// Export Form 3 data to Excel (Dev, Admin, Finance allowed)
@@ -257,10 +261,12 @@ class AppProvider extends ChangeNotifier {
         'Unauthorized: Only Dev, Admin, or Finance can export data.',
       );
     }
-    final form3People = _people
-        .where((p) => p.completedFormCount >= 3)
-        .toList();
-    await ExcelService.exportForm3Data(form3People);
+    final forms = await _firebaseController.getSubmittedForms(formNumber: 3);
+    await ExcelService.exportSubmittedFormData(
+      forms,
+      allPeople: _people,
+      formNumber: 3,
+    );
   }
 
   /// Export Form 4 data to Excel (Dev, Admin, Finance allowed)
@@ -270,10 +276,12 @@ class AppProvider extends ChangeNotifier {
         'Unauthorized: Only Dev, Admin, or Finance can export data.',
       );
     }
-    final form4People = _people
-        .where((p) => p.completedFormCount >= 4)
-        .toList();
-    await ExcelService.exportForm4Data(form4People);
+    final forms = await _firebaseController.getSubmittedForms(formNumber: 4);
+    await ExcelService.exportSubmittedFormData(
+      forms,
+      allPeople: _people,
+      formNumber: 4,
+    );
   }
 
   /// Export Form 5 (Finance) data to Excel (Dev, Admin, Finance allowed)
@@ -283,10 +291,12 @@ class AppProvider extends ChangeNotifier {
         'Unauthorized: Only Dev, Admin, or Finance can export data.',
       );
     }
-    final form5People = _people
-        .where((p) => p.completedFormCount >= 5)
-        .toList();
-    await ExcelService.exportForm5Data(form5People);
+    final forms = await _firebaseController.getSubmittedForms(formNumber: 5);
+    await ExcelService.exportSubmittedFormData(
+      forms,
+      allPeople: _people,
+      formNumber: 5,
+    );
   }
 
   /// Export filtered profiles to Excel (Dev, Admin, Finance allowed)

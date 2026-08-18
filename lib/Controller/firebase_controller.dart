@@ -53,8 +53,73 @@ class FirebaseController {
     return null;
   }
 
+  Future<List<FormDataModel>> getSubmittedForms({
+    String? personId,
+    int? formNumber,
+  }) async {
+    Query query = _formsRef;
+
+    if (personId != null) {
+      query = query.where('personId', isEqualTo: personId);
+    }
+    if (formNumber != null) {
+      query = query.where('formNumber', isEqualTo: formNumber);
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs
+        .map((doc) => FormDataModel.fromFirestore(doc))
+        .where((form) => !form.isDraft)
+        .toList();
+  }
+
+  Future<void> _rebuildPersonSummary(String personId) async {
+    final personDoc = await _peopleRef.doc(personId).get();
+    final existingData = personDoc.data() as Map<String, dynamic>? ?? {};
+    final submittedForms = await getSubmittedForms(personId: personId);
+    final summaryUpdates = FormMapperRegistry.buildSummaryFromSubmittedForms(
+      submittedForms,
+    );
+
+    final defaultSummary = <String, dynamic>{
+      'name': existingData['name'] ?? '',
+      'its': existingData['its'] ?? 0,
+      'sfNo': existingData['sfNo'] ?? 0,
+      'contact': existingData['contact'] ?? '',
+      'address': '',
+      'willingToSolar': false,
+      'landlordApproval': false,
+      'hasExistingSolarSystem': false,
+      'totalWattage': 0.0,
+      'financeByMomin': 'No',
+      'financeAsPerExpectation': 'Unspecified',
+      'hasExistingUps': false,
+      'numberOfSolarPanels': 2,
+      'numberOfInverter': 1,
+      'lithiumBattery': 1,
+      'structure': 'elevated',
+      'structureQuantity': 1,
+      'solarPanelAmount': 0.0,
+      'inverterAmount': 0.0,
+      'lithiumBatteryAmount': 0.0,
+      'structureAmount': 0.0,
+      'ownContribution': 0.0,
+      'qarzanHasana': 0.0,
+      'totalContribution': 0.0,
+      'completedFormCount': 0,
+    };
+
+    final rebuiltSummary = <String, dynamic>{
+      ...defaultSummary,
+      ...summaryUpdates,
+    };
+
+    await _peopleRef.doc(personId).set(rebuiltSummary);
+  }
+
   Future<void> deleteForm(String personId, int formNumber) async {
     final String docId = '${personId}_form_$formNumber';
     await _formsRef.doc(docId).delete();
+    await _rebuildPersonSummary(personId);
   }
 }

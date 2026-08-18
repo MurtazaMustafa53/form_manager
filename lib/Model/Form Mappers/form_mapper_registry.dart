@@ -22,4 +22,23 @@ class FormMapperRegistry {
     }
     return {'completedFormCount': formData.formNumber};
   }
+
+  static Map<String, dynamic> buildSummaryFromSubmittedForms(
+    List<FormDataModel> submittedForms,
+  ) {
+    final validForms = submittedForms.where((form) => !form.isDraft).toList()
+      ..sort((a, b) => a.formNumber.compareTo(b.formNumber));
+
+    final merged = <String, dynamic>{};
+    for (final form in validForms) {
+      final updates = getPersonUpdates(form);
+      for (final entry in updates.entries) {
+        if (entry.key == 'completedFormCount') continue;
+        merged[entry.key] = entry.value;
+      }
+    }
+
+    merged['completedFormCount'] = validForms.length;
+    return merged;
+  }
 }

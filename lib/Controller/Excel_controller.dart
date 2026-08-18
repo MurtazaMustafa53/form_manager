@@ -5,6 +5,7 @@ import 'package:excel/excel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
 
+import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Model/person_model.dart';
 
 class ExcelService {
@@ -89,6 +90,80 @@ class ExcelService {
       debugPrint('Error picking excel: $e');
       return [];
     }
+  }
+
+  static Future<void> exportSubmittedFormData(
+    List<FormDataModel> formSubmissions, {
+    required List<PersonModel> allPeople,
+    required int formNumber,
+  }) async {
+    final Excel excel = Excel.createExcel();
+    final Sheet sheet = excel['Form $formNumber'];
+
+    final Map<String, String> columnMap = {};
+    final List<String> baseHeaders = [
+      'Person ID',
+      'Name',
+      'ITS Number',
+      'SF Number',
+      'Contact',
+    ];
+
+    for (final submission in formSubmissions) {
+      final answers = submission.answers;
+      if (answers is Map) {
+        for (final entry in answers.entries) {
+          final key = entry.key.toString();
+          if (!columnMap.containsKey(key)) {
+            columnMap[key] = key;
+          }
+        }
+      }
+    }
+
+    final allHeaders = [...baseHeaders, ...columnMap.keys.toList()];
+    sheet.appendRow(_toCellRow(allHeaders));
+
+    for (final submission in formSubmissions) {
+      final person = allPeople.firstWhere(
+        (p) => p.id == submission.personId,
+        orElse: () =>
+            PersonModel(id: submission.personId, name: '', its: 0, contact: ''),
+      );
+
+      final answerMap = submission.answers is Map
+          ? Map<String, dynamic>.from(submission.answers as Map)
+          : <String, dynamic>{};
+      final values = <dynamic>[
+        submission.personId,
+        person.name,
+        person.its,
+        person.sfNo ?? '',
+        person.contact,
+      ];
+
+      for (final key in columnMap.keys) {
+        values.add(_normalizeExportValue(answerMap[key]));
+      }
+
+      sheet.appendRow(_toCellRow(values));
+    }
+
+    await _saveExcelFile(
+      excel,
+      'Form_${formNumber}_Full_Data_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+    );
+  }
+
+  static dynamic _normalizeExportValue(dynamic value) {
+    if (value == null) return '';
+    if (value is Map || value is List) {
+      return value.toString();
+    }
+    if (value is num) {
+      return value;
+    }
+    return value.toString();
   }
 
   /// Export form 1 data for a list of people

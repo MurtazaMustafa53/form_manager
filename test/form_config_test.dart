@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:form_manager/Model/Form%20Mappers/form5_mapper.dart';
+import 'package:form_manager/Model/Form%20Mappers/form_mapper_registry.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Views/Forms/form2_view.dart';
 import 'package:form_manager/Views/Forms/form3_view.dart';
@@ -96,6 +97,38 @@ void main() {
         expect(update['ownContribution'], 15000);
         expect(update['qarzanHasana'], 10000);
         expect(update['totalContribution'], 25000);
+      },
+    );
+
+    test(
+      'summary rebuild keeps the highest remaining form number after delete',
+      () {
+        final forms = [
+          FormDataModel(
+            id: 'person_1_form_1',
+            personId: 'person_1',
+            formNumber: 1,
+            filledByStaffId: 'staff_1',
+            updatedAt: DateTime.now(),
+            answers: {'address': 'Street 1', 'solarWillingness': 'Yes'},
+          ),
+          FormDataModel(
+            id: 'person_1_form_3',
+            personId: 'person_1',
+            formNumber: 3,
+            filledByStaffId: 'staff_1',
+            updatedAt: DateTime.now(),
+            answers: {'roofType': 'Concrete', 'houseNoOfSolarPanels': 5},
+          ),
+        ];
+
+        final summary = FormMapperRegistry.buildSummaryFromSubmittedForms(
+          forms,
+        );
+
+        expect(summary['completedFormCount'], 3);
+        expect(summary['roofType'], 'Concrete');
+        expect(summary['address'], 'Street 1');
       },
     );
   });
