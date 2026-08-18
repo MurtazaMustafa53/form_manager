@@ -27,6 +27,13 @@ class PersonModel {
   final int lithiumBattery;
   final String structure;
   final int structureQuantity;
+  final double solarPanelAmount;
+  final double inverterAmount;
+  final double lithiumBatteryAmount;
+  final double structureAmount;
+  final double ownContribution;
+  final double qarzanHasana;
+  final double totalContribution;
 
   // Completion Tracking
   final int completedFormCount;
@@ -52,6 +59,13 @@ class PersonModel {
     this.lithiumBattery = 1,
     this.structure = 'elevated',
     this.structureQuantity = 1,
+    this.solarPanelAmount = 0,
+    this.inverterAmount = 0,
+    this.lithiumBatteryAmount = 0,
+    this.structureAmount = 0,
+    this.ownContribution = 0,
+    this.qarzanHasana = 0,
+    this.totalContribution = 0,
     this.completedFormCount = 0,
   });
 
@@ -83,6 +97,13 @@ class PersonModel {
     int? lithiumBattery,
     String? structure,
     int? structureQuantity,
+    double? solarPanelAmount,
+    double? inverterAmount,
+    double? lithiumBatteryAmount,
+    double? structureAmount,
+    double? ownContribution,
+    double? qarzanHasana,
+    double? totalContribution,
     int? completedFormCount,
   }) {
     return PersonModel(
@@ -106,6 +127,13 @@ class PersonModel {
       lithiumBattery: lithiumBattery ?? this.lithiumBattery,
       structure: structure ?? this.structure,
       structureQuantity: structureQuantity ?? this.structureQuantity,
+      solarPanelAmount: solarPanelAmount ?? this.solarPanelAmount,
+      inverterAmount: inverterAmount ?? this.inverterAmount,
+      lithiumBatteryAmount: lithiumBatteryAmount ?? this.lithiumBatteryAmount,
+      structureAmount: structureAmount ?? this.structureAmount,
+      ownContribution: ownContribution ?? this.ownContribution,
+      qarzanHasana: qarzanHasana ?? this.qarzanHasana,
+      totalContribution: totalContribution ?? this.totalContribution,
       completedFormCount: completedFormCount ?? this.completedFormCount,
     );
   }
@@ -171,6 +199,22 @@ class PersonModel {
       structureQuantity: parseInt(data['structureQuantity']) == 0
           ? 1
           : parseInt(data['structureQuantity']),
+      solarPanelAmount: parseDouble(
+        data['solarPanelAmount'],
+        defaultValue: 0.0,
+      ),
+      inverterAmount: parseDouble(data['inverterAmount'], defaultValue: 0.0),
+      lithiumBatteryAmount: parseDouble(
+        data['lithiumBatteryAmount'],
+        defaultValue: 0.0,
+      ),
+      structureAmount: parseDouble(data['structureAmount'], defaultValue: 0.0),
+      ownContribution: parseDouble(data['ownContribution'], defaultValue: 0.0),
+      qarzanHasana: parseDouble(data['qarzanHasana'], defaultValue: 0.0),
+      totalContribution: parseDouble(
+        data['totalContribution'],
+        defaultValue: 0.0,
+      ),
       completedFormCount: parseInt(data['completedFormCount']),
     );
   }
@@ -195,6 +239,13 @@ class PersonModel {
       'lithiumBattery': lithiumBattery,
       'structure': structure,
       'structureQuantity': structureQuantity,
+      'solarPanelAmount': solarPanelAmount,
+      'inverterAmount': inverterAmount,
+      'lithiumBatteryAmount': lithiumBatteryAmount,
+      'structureAmount': structureAmount,
+      'ownContribution': ownContribution,
+      'qarzanHasana': qarzanHasana,
+      'totalContribution': totalContribution,
       'completedFormCount': completedFormCount,
     };
   }

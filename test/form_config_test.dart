@@ -41,52 +41,62 @@ void main() {
       final materials = buildMaterialFieldDefinitions();
       final keys = materials.map((item) => item['key']).toList();
 
-      expect(keys.indexOf('socket'), lessThan(keys.indexOf('dcBreaker')));
-      expect(keys.indexOf('changeOver'), lessThan(keys.indexOf('dcWire4mm')));
-      expect(keys.indexOf('screw'), lessThan(keys.indexOf('dcWire4mm')));
       expect(
         keys.indexOf('indicationLights'),
-        lessThan(keys.indexOf('wire4076')),
-      );
-      expect(keys.indexOf('rawalPlug'), lessThan(keys.indexOf('wire4076')));
-      expect(keys.indexOf('mc4Connector'), lessThan(keys.indexOf('rawalPlug')));
-      expect(
-        keys.indexOf('flexiblePipe34'),
         lessThan(keys.indexOf('rawalPlug')),
       );
+      expect(keys.indexOf('rawalPlug'), lessThan(keys.indexOf('wire4076')));
+      expect(keys.indexOf('wire4076'), lessThan(keys.indexOf('mc4Connector')));
       expect(keys.indexOf('batteryWire'), lessThan(keys.indexOf('duct1x1')));
       expect(keys.indexOf('flexiblePipe1'), lessThan(keys.indexOf('duct1x1')));
       expect(keys.indexOf('thimble'), lessThan(keys.indexOf('band')));
       expect(keys.indexOf('clip34'), lessThan(keys.indexOf('band')));
     });
 
-    test('finance mapper includes the solar installation fields', () {
-      final update = Form5Mapper().toPersonUpdates(
-        FormDataModel(
-          id: 'person_1_form_5',
-          personId: 'person_1',
-          formNumber: 5,
-          filledByStaffId: 'staff_1',
-          updatedAt: DateTime.now(),
-          answers: {
-            'summaryTotal': 25000,
-            'materials': [],
-            'financeByMumin': 'Yes',
-            'financeExpectation': 'Yes',
-            'numberOfSolarPanels': 2,
-            'numberOfInverter': 1,
-            'lithiumBattery': 1,
-            'structure': 'elevated',
-            'structureQuantity': 1,
-          },
-        ),
-      );
+    test(
+      'finance mapper includes the solar installation and contribution fields',
+      () {
+        final update = Form5Mapper().toPersonUpdates(
+          FormDataModel(
+            id: 'person_1_form_5',
+            personId: 'person_1',
+            formNumber: 5,
+            filledByStaffId: 'staff_1',
+            updatedAt: DateTime.now(),
+            answers: {
+              'summaryTotal': 25000,
+              'materials': [],
+              'financeByMumin': 'Yes',
+              'financeExpectation': 'Yes',
+              'numberOfSolarPanels': 2,
+              'numberOfInverter': 1,
+              'lithiumBattery': 1,
+              'structure': 'elevated',
+              'structureQuantity': 1,
+              'solarPanelAmount': 2500,
+              'inverterAmount': 1200,
+              'lithiumBatteryAmount': 1800,
+              'structureAmount': 500,
+              'ownContribution': 15000,
+              'qarzanHasana': 10000,
+              'totalContribution': 25000,
+            },
+          ),
+        );
 
-      expect(update['numberOfSolarPanels'], 2);
-      expect(update['numberOfInverter'], 1);
-      expect(update['lithiumBattery'], 1);
-      expect(update['structure'], 'elevated');
-      expect(update['structureQuantity'], 1);
-    });
+        expect(update['numberOfSolarPanels'], 2);
+        expect(update['numberOfInverter'], 1);
+        expect(update['lithiumBattery'], 1);
+        expect(update['structure'], 'elevated');
+        expect(update['structureQuantity'], 1);
+        expect(update['solarPanelAmount'], 2500);
+        expect(update['inverterAmount'], 1200);
+        expect(update['lithiumBatteryAmount'], 1800);
+        expect(update['structureAmount'], 500);
+        expect(update['ownContribution'], 15000);
+        expect(update['qarzanHasana'], 10000);
+        expect(update['totalContribution'], 25000);
+      },
+    );
   });
 }

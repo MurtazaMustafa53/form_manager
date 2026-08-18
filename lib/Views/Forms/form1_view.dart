@@ -35,6 +35,7 @@ class _Form1ViewState extends State<Form1View> {
 
   bool _isSavingDraft = false;
   bool _isSubmitting = false;
+  bool _isDeleting = false;
   bool _isReadOnly = false;
 
   final List<String> _houseTypeOptions = ['Ownership', 'Rent', 'Goodwill'];
@@ -297,6 +298,53 @@ class _Form1ViewState extends State<Form1View> {
     }
   }
 
+  Future<void> _handleDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Form'),
+        content: const Text(
+          'Are you sure you want to delete this form? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    try {
+      await provider.deleteSubmittedForm(widget.person.id, 1);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Form 1 deleted successfully.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final double completionRatio = _calculateCompletionRatio();
@@ -484,6 +532,30 @@ class _Form1ViewState extends State<Form1View> {
                                   )
                                 : const Text(
                                     'Submit Form',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: buttonWidth,
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: _isDeleting ? null : _handleDelete,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            child: _isDeleting
+                                ? const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  )
+                                : const Text(
+                                    'Delete Form',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),

@@ -15,16 +15,16 @@ List<Map<String, String>> buildMaterialFieldDefinitions() {
     {'key': 'wire7029', 'label': 'Wire 7/0.29'},
     {'key': 'socket', 'label': 'Sockets'},
     {'key': 'dcBreaker', 'label': 'DC Breaker'},
-    {'key': 'pipeLength1', 'label': 'PVC Pipe 1"'}, // new
+    {'key': 'pipeLength1', 'label': 'PVC Pipe 1"'},
     {'key': 'acWire4mm', 'label': 'Wire 4mm (AC)'},
     {'key': 'changeOver', 'label': 'Change Over Switch'},
     {'key': 'screw', 'label': 'Screws'},
     {'key': 'dcWire4mm', 'label': 'Wire 4mm (DC)'},
     {'key': 'indicationLights', 'label': 'Indication Lights'},
+    {'key': 'rawalPlug', 'label': 'Rawal Plugs'}, //order changed
+    {'key': 'wire4076', 'label': 'Wire 40/0.76'}, //order changed
     {'key': 'mc4Connector', 'label': 'MC4 Connectors'},
     {'key': 'flexiblePipe34', 'label': 'Flexible Pipe 3/4"'},
-    {'key': 'rawalPlug', 'label': 'Rawal Plugs'},
-    {'key': 'wire4076', 'label': 'Wire 40/0.76'},
     {'key': 'duct25x25', 'label': 'Duct 25x25'},
     {'key': 'batteryWire', 'label': 'Battery Cable'},
     {'key': 'flexiblePipe1', 'label': 'Flexible Pipe 1"'},
@@ -102,6 +102,7 @@ class _Form3ViewState extends State<Form3View> {
 
   bool _isSavingDraft = false;
   bool _isSubmitting = false;
+  bool _isDeleting = false;
   bool _isReadOnly = false;
 
   final List<String> _roofTypeOptions = [
@@ -314,6 +315,53 @@ class _Form3ViewState extends State<Form3View> {
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  Future<void> _handleDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Form'),
+        content: const Text(
+          'Are you sure you want to delete this form? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    try {
+      await provider.deleteSubmittedForm(widget.person.id, 3);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Form 3 deleted successfully.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
     }
   }
 
@@ -671,6 +719,30 @@ class _Form3ViewState extends State<Form3View> {
                                   )
                                 : const Text(
                                     'Submit Form',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: buttonWidth,
+                          height: 48,
+                          child: OutlinedButton(
+                            onPressed: _isDeleting ? null : _handleDelete,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(24),
+                              ),
+                            ),
+                            child: _isDeleting
+                                ? const CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  )
+                                : const Text(
+                                    'Delete Form',
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                     ),

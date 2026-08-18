@@ -5,6 +5,16 @@ class Form5Mapper implements BaseFormMapper {
   @override
   int get formNumber => 5;
 
+  static double _parseMoney(dynamic value, {double defaultValue = 0}) {
+    if (value == null) return defaultValue;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final sanitized = value.replaceAll(',', '').trim();
+      return double.tryParse(sanitized) ?? defaultValue;
+    }
+    return defaultValue;
+  }
+
   @override
   Map<String, dynamic> toPersonUpdates(FormDataModel formData) {
     final ans = formData.answers;
@@ -24,6 +34,13 @@ class Form5Mapper implements BaseFormMapper {
       'structure': (ans['structure'] ?? 'elevated').toString().trim(),
       'structureQuantity':
           int.tryParse((ans['structureQuantity'] ?? '1').toString()) ?? 1,
+      'solarPanelAmount': _parseMoney(ans['solarPanelAmount']),
+      'inverterAmount': _parseMoney(ans['inverterAmount']),
+      'lithiumBatteryAmount': _parseMoney(ans['lithiumBatteryAmount']),
+      'structureAmount': _parseMoney(ans['structureAmount']),
+      'ownContribution': _parseMoney(ans['ownContribution']),
+      'qarzanHasana': _parseMoney(ans['qarzanHasana']),
+      'totalContribution': _parseMoney(ans['totalContribution']),
     };
   }
 }

@@ -159,6 +159,17 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Delete a submitted form from Firebase (Dev, Admin, Finance allowed)
+  Future<void> deleteSubmittedForm(String personId, int formNumber) async {
+    // Allow admin/dev to delete any form. Allow finance role to delete only the finance form.
+    if (!(isAdmin || isDev || (isFinance && formNumber == 5))) {
+      throw Exception('Unauthorized: insufficient permissions to delete form.');
+    }
+    await _firebaseController.deleteForm(personId, formNumber);
+    await LocalStorageController.clearFormDraft(personId, formNumber);
+    notifyListeners();
+  }
+
   // --- MANAGEMENT ACTIONS ---
 
   // Add Profile (Dev Only)

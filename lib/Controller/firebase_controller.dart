@@ -52,4 +52,9 @@ class FirebaseController {
     }
     return null;
   }
+
+  Future<void> deleteForm(String personId, int formNumber) async {
+    final String docId = '${personId}_form_$formNumber';
+    await _formsRef.doc(docId).delete();
+  }
 }

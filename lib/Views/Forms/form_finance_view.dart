@@ -18,11 +18,19 @@ class _FormFinanceViewState extends State<FormFinanceView> {
   bool _isLoading = true;
   bool _isSavingDraft = false;
   bool _isSubmitting = false;
+  bool _isDeleting = false;
 
   final _numberOfSolarPanelsController = TextEditingController(text: '2');
   final _numberOfInverterController = TextEditingController(text: '1');
   final _lithiumBatteryController = TextEditingController(text: '1');
   final _structureQuantityController = TextEditingController(text: '1');
+  final _solarPanelAmountController = TextEditingController(text: '0');
+  final _inverterAmountController = TextEditingController(text: '0');
+  final _lithiumBatteryAmountController = TextEditingController(text: '0');
+  final _structureAmountController = TextEditingController(text: '0');
+  final _ownContributionController = TextEditingController(text: '0');
+  final _qarzanHasanaController = TextEditingController(text: '0');
+  final _totalContributionController = TextEditingController(text: '0');
 
   // Form1 fields
   String _landlordApproval = '';
@@ -38,9 +46,31 @@ class _FormFinanceViewState extends State<FormFinanceView> {
   Map<String, dynamic> _materials = {};
   final Map<String, TextEditingController> _multControllers = {};
 
+  double _parseMoneyInput(String? value) {
+    if (value == null || value.trim().isEmpty) return 0;
+    return double.tryParse(value.replaceAll(',', '').trim()) ?? 0;
+  }
+
+  String _formatMoneyValue(double value) {
+    if (value % 1 == 0) return value.toInt().toString();
+    return value.toStringAsFixed(2);
+  }
+
+  void _syncContributionTotal() {
+    final own = _parseMoneyInput(_ownContributionController.text);
+    final qarzan = _parseMoneyInput(_qarzanHasanaController.text);
+    final total = own + qarzan;
+    final nextTotal = _formatMoneyValue(total);
+    if (_totalContributionController.text != nextTotal) {
+      _totalContributionController.text = nextTotal;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _ownContributionController.addListener(_syncContributionTotal);
+    _qarzanHasanaController.addListener(_syncContributionTotal);
     _loadAllForms();
   }
 
@@ -73,6 +103,20 @@ class _FormFinanceViewState extends State<FormFinanceView> {
           .toString();
       _structureQuantityController.text =
           (financeAnswers['structureQuantity'] ?? 1).toString();
+      _solarPanelAmountController.text =
+          (financeAnswers['solarPanelAmount'] ?? 0).toString();
+      _inverterAmountController.text = (financeAnswers['inverterAmount'] ?? 0)
+          .toString();
+      _lithiumBatteryAmountController.text =
+          (financeAnswers['lithiumBatteryAmount'] ?? 0).toString();
+      _structureAmountController.text = (financeAnswers['structureAmount'] ?? 0)
+          .toString();
+      _ownContributionController.text = (financeAnswers['ownContribution'] ?? 0)
+          .toString();
+      _qarzanHasanaController.text = (financeAnswers['qarzanHasana'] ?? 0)
+          .toString();
+      _totalContributionController.text =
+          (financeAnswers['totalContribution'] ?? 0).toString();
 
       final mats = (f3?.answers['materials'] ?? {}) as Map<String, dynamic>;
       _materials = Map<String, dynamic>.from(mats);
@@ -93,6 +137,13 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     _numberOfInverterController.dispose();
     _lithiumBatteryController.dispose();
     _structureQuantityController.dispose();
+    _solarPanelAmountController.dispose();
+    _inverterAmountController.dispose();
+    _lithiumBatteryAmountController.dispose();
+    _structureAmountController.dispose();
+    _ownContributionController.dispose();
+    _qarzanHasanaController.dispose();
+    _totalContributionController.dispose();
     for (var c in _multControllers.values) {
       c.dispose();
     }
@@ -105,17 +156,50 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     return orig * mult;
   }
 
+  double _rowTotalFromQtyAndAmount(String qty, String amount) {
+    final quantity = int.tryParse(qty.trim()) ?? 0;
+    final unitAmount = _parseMoneyInput(amount);
+    return quantity * unitAmount;
+  }
+
+  double _installationTotals() {
+    return _rowTotalFromQtyAndAmount(
+          _numberOfSolarPanelsController.text,
+          _solarPanelAmountController.text,
+        ) +
+        _rowTotalFromQtyAndAmount(
+          _numberOfInverterController.text,
+          _inverterAmountController.text,
+        ) +
+        _rowTotalFromQtyAndAmount(
+          _lithiumBatteryController.text,
+          _lithiumBatteryAmountController.text,
+        ) +
+        _rowTotalFromQtyAndAmount(
+          _structureQuantityController.text,
+          _structureAmountController.text,
+        );
+  }
+
+  double _getMaterialsTotal() {
+    double total = 0;
+    for (var def in form3.buildMaterialFieldDefinitions()) {
+      total += _computedFor(def['key']!);
+    }
+    return total.toDouble();
+  }
+
   int _totalComputed() {
     int total = 0;
     for (var def in form3.buildMaterialFieldDefinitions()) {
       total += _computedFor(def['key']!);
     }
-    return total;
+    return total + _installationTotals().round();
   }
 
   double _calculateCompletionRatio() {
     final defs = form3.buildMaterialFieldDefinitions();
-    final totalFields = 9 + defs.length;
+    final totalFields = 12 + defs.length;
     int filled = 0;
     if (_landlordApproval.isNotEmpty) filled++;
     if (_solarWillingness.isNotEmpty) filled++;
@@ -126,6 +210,13 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     if (_lithiumBatteryController.text.trim().isNotEmpty) filled++;
     if (_selectedStructure != null && _selectedStructure!.isNotEmpty) filled++;
     if (_structureQuantityController.text.trim().isNotEmpty) filled++;
+    if (_solarPanelAmountController.text.trim().isNotEmpty) filled++;
+    if (_inverterAmountController.text.trim().isNotEmpty) filled++;
+    if (_lithiumBatteryAmountController.text.trim().isNotEmpty) filled++;
+    if (_structureAmountController.text.trim().isNotEmpty) filled++;
+    if (_ownContributionController.text.trim().isNotEmpty) filled++;
+    if (_qarzanHasanaController.text.trim().isNotEmpty) filled++;
+    if (_totalContributionController.text.trim().isNotEmpty) filled++;
     for (var def in defs) {
       final key = def['key']!;
       final mult = _multControllers[key]?.text.trim() ?? '';
@@ -165,6 +256,15 @@ class _FormFinanceViewState extends State<FormFinanceView> {
       'structure': _selectedStructure ?? 'elevated',
       'structureQuantity':
           int.tryParse(_structureQuantityController.text.trim()) ?? 1,
+      'solarPanelAmount': _parseMoneyInput(_solarPanelAmountController.text),
+      'inverterAmount': _parseMoneyInput(_inverterAmountController.text),
+      'lithiumBatteryAmount': _parseMoneyInput(
+        _lithiumBatteryAmountController.text,
+      ),
+      'structureAmount': _parseMoneyInput(_structureAmountController.text),
+      'ownContribution': _parseMoneyInput(_ownContributionController.text),
+      'qarzanHasana': _parseMoneyInput(_qarzanHasanaController.text),
+      'totalContribution': _parseMoneyInput(_totalContributionController.text),
       'materials': materialsWithMultipliers,
       'summaryTotal': _totalComputed(),
     };
@@ -219,6 +319,15 @@ class _FormFinanceViewState extends State<FormFinanceView> {
       'structure': _selectedStructure ?? 'elevated',
       'structureQuantity':
           int.tryParse(_structureQuantityController.text.trim()) ?? 1,
+      'solarPanelAmount': _parseMoneyInput(_solarPanelAmountController.text),
+      'inverterAmount': _parseMoneyInput(_inverterAmountController.text),
+      'lithiumBatteryAmount': _parseMoneyInput(
+        _lithiumBatteryAmountController.text,
+      ),
+      'structureAmount': _parseMoneyInput(_structureAmountController.text),
+      'ownContribution': _parseMoneyInput(_ownContributionController.text),
+      'qarzanHasana': _parseMoneyInput(_qarzanHasanaController.text),
+      'totalContribution': _parseMoneyInput(_totalContributionController.text),
       'materials': materialsWithMultipliers,
       'summaryTotal': _totalComputed(),
     };
@@ -251,12 +360,62 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     }
   }
 
+  Future<void> _handleDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Form'),
+        content: const Text(
+          'Are you sure you want to delete this form? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+    final provider = Provider.of<AppProvider>(context, listen: false);
+
+    try {
+      await provider.deleteSubmittedForm(widget.person.id, 5);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Finance form deleted successfully.')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Delete failed: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isDeleting = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
-    final isFinance = provider.currentUser?.isFinance ?? false;
+    final isAllowed =
+        (provider.currentUser?.isDev ?? false) ||
+        (provider.currentUser?.isAdmin ?? false) ||
+        (provider.currentUser?.isFinance ?? false);
 
-    if (!isFinance) {
+    if (!isAllowed) {
       return Scaffold(
         appBar: AppBar(title: const Text('Finance Form')),
         body: const Center(
@@ -372,10 +531,10 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                       SizedBox(
                         width: 180,
                         child: TextFormField(
-                          controller: _numberOfSolarPanelsController,
+                          controller: _ownContributionController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'Number of solar panels',
+                            labelText: 'Own Contribution',
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -383,10 +542,10 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                       SizedBox(
                         width: 180,
                         child: TextFormField(
-                          controller: _numberOfInverterController,
+                          controller: _qarzanHasanaController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'Number of inverter',
+                            labelText: 'Qarzan Hasana',
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -394,61 +553,15 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                       SizedBox(
                         width: 180,
                         child: TextFormField(
-                          controller: _lithiumBatteryController,
+                          controller: _totalContributionController,
                           keyboardType: TextInputType.number,
+                          readOnly: true,
                           decoration: const InputDecoration(
-                            labelText: 'Lithium Battery',
+                            labelText: 'Total Contribution',
                             border: OutlineInputBorder(),
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedStructure,
-                          decoration: const InputDecoration(
-                            labelText: 'Structure',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'elevated',
-                              child: Text('Elevated'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'floormount',
-                              child: Text('Floormount'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedStructure = value ?? 'elevated';
-                              if (_structureQuantityController.text
-                                  .trim()
-                                  .isEmpty) {
-                                _structureQuantityController.text = '1';
-                              }
-                            });
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      if (_selectedStructure != null)
-                        Expanded(
-                          child: TextFormField(
-                            controller: _structureQuantityController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'Structure quantity',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                 ],
@@ -471,6 +584,32 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
+                  SizedBox(
+                    width: 300,
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedStructure,
+                      decoration: const InputDecoration(
+                        labelText: 'Structure Type',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'elevated',
+                          child: Text('Elevated'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'floormount',
+                          child: Text('Floormount'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedStructure = value ?? 'elevated';
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   // Table header
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -514,6 +653,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                     ),
                   ),
                   const SizedBox(height: 6),
+                  // Material rows from form3
                   ...form3.buildMaterialFieldDefinitions().map((def) {
                     final key = def['key']!;
                     final orig = _materials[key] ?? '0';
@@ -555,6 +695,207 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                       ),
                     );
                   }).toList(),
+                  // Divider line
+                  const SizedBox(height: 12),
+                  Divider(height: 1, color: Colors.grey.shade300),
+                  const SizedBox(height: 12),
+                  // Installation items as table rows
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(flex: 4, child: const Text('Solar Panels')),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _numberOfSolarPanelsController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _solarPanelAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: Text(
+                              "Rs. ${_rowTotalFromQtyAndAmount(_numberOfSolarPanelsController.text, _solarPanelAmountController.text).toInt().toString()}",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(flex: 4, child: const Text('Inverter')),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _numberOfInverterController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _inverterAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: Text(
+                              "Rs. ${_rowTotalFromQtyAndAmount(_numberOfInverterController.text, _inverterAmountController.text).toInt().toString()}",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(flex: 4, child: const Text('Lithium Battery')),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _lithiumBatteryController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _lithiumBatteryAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: Text(
+                              "Rs. ${_rowTotalFromQtyAndAmount(_lithiumBatteryController.text, _lithiumBatteryAmountController.text).toInt().toString()}",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(flex: 4, child: const Text('Structure')),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _structureQuantityController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _structureAmountController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: Text(
+                              "Rs. ${_rowTotalFromQtyAndAmount(_structureQuantityController.text, _structureAmountController.text).toInt().toString()}",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -575,6 +916,33 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                   ),
                   const SizedBox(height: 12),
+                  // Materials subtotal
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Materials Total:'),
+                      Text(
+                        'Rs. ${_getMaterialsTotal().toInt().toString()}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Installation items subtotal
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Installation Items Total:'),
+                      Text(
+                        'Rs. ${_installationTotals().toInt().toString()}',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Divider(height: 1, color: Colors.grey.shade400),
+                  const SizedBox(height: 12),
+                  // Grand total
                   Row(
                     children: [
                       const Text(
@@ -658,6 +1026,26 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                               )
                             : const Text(
                                 'Submit',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                      ),
+                    ),
+                    SizedBox(
+                      width: buttonWidth,
+                      height: 48,
+                      child: OutlinedButton(
+                        onPressed: _isDeleting ? null : _handleDelete,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red,
+                          side: const BorderSide(color: Colors.red),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        child: _isDeleting
+                            ? const CircularProgressIndicator(strokeWidth: 2)
+                            : const Text(
+                                'Delete Form',
                                 style: TextStyle(fontWeight: FontWeight.w600),
                               ),
                       ),
