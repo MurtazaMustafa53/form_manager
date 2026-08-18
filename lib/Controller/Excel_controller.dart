@@ -9,6 +9,129 @@ import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Model/person_model.dart';
 
 class ExcelService {
+  static const List<String> _form1Headers = [
+    'Full Name',
+    'ITS Number',
+    'SF Number',
+    'Contact Number',
+    'Complete Address',
+    'House Type',
+    'Total Number of Rooms',
+    'Number of Family Members',
+    'Are you willing to install solar',
+    "Lanlord's approval",
+  ];
+
+  static const List<String> _form2Headers = [
+    'Full Name',
+    'ITS Number',
+    'SF Number',
+    'Contact Number',
+    'Fan',
+    'AC/DC Fan',
+    'Tube Light',
+    'LED Bulb',
+    'Wifi Router',
+    'AC 1-Ton inverter',
+    'AC 1.5 ton',
+    'AC 2 ton',
+    'Fridge normal',
+    'Fridge inverter',
+    'Deep freezer normal',
+    'Deep freezer inverter',
+    'Dispenser',
+    'Water pump 1/2 HP',
+    'Water pump 1HP',
+    'Boring Pump',
+    'Washing Machine',
+    'Iron',
+    'Microwave',
+    'TV',
+    'KW installed',
+    'Panels wattage',
+    'Inverter Capacity',
+    'Battery type',
+    'Normal UPS installed',
+    'Existing Inverter',
+    'Existing Battery',
+    'Alternative Backup',
+    'Finance by mumim',
+    'Finance as per expectation',
+    'Filled by staff name',
+    'Landlord name',
+    'Landlord contact',
+  ];
+
+  static const List<String> _form3Headers = [
+    'Full name',
+    'Its number',
+    'Sf number',
+    'Contact number',
+    'Roof type',
+    'Roof size',
+    'Max solar panel count',
+    'Floor mount panels count',
+    'Elevated mount panels count',
+    'Main DB board type',
+    'DC wire length',
+    'AC wire length',
+    'UPS wiring present',
+    'UPS wiring length',
+    'Separate room breaker',
+    'Water tap on roof',
+    'Earthing cable length',
+    'DB Box',
+    'Nuts and bolts',
+    'Clips 1"',
+    'Insulation tape',
+    'AC breaker',
+    'PVC pipe 3/4"',
+    'Wire 7/0.29',
+    'Sockets',
+    'DC breaker',
+    'PVC pipe 1"',
+    'Wire 4mm (AC)',
+    'Change over switch',
+    'Screws',
+    'Wire 4mm DC',
+    'Indication light',
+    'Rawal plugs',
+    'Wire 40/0.76',
+    'MC4 connectors',
+    'Flexible pipe 3/4"',
+    'Duct 25x25',
+    'Battery cable',
+    'Flexible pipe 1"',
+    'Duct 1x1',
+    'Thimble lugs',
+    'Clips 3/4"',
+    'Pipe bands',
+    'Filled by staff name',
+    'Survey remarks and observations',
+  ];
+
+  static const List<String> _form4Headers = [
+    'Full name',
+    'Its number',
+    'Sf number',
+    'Contact number',
+    'Mardo count',
+    'Bairo count',
+    'Gair baligh count',
+    'How many family members',
+    'How many dependent family',
+    'Financial status',
+    'Source of income',
+    'Own amount',
+    'Own percentage',
+    'Qarzan amount',
+    'Timelength',
+    'No. of months jammat contribution',
+    'Finance as per expectation',
+    'Filled by staff',
+    'Remarks',
+  ];
+
   static List<CellValue?> _toCellRow(List<dynamic> values) {
     return values.map((value) {
       if (value == null) {
@@ -25,6 +148,356 @@ class ExcelService {
       }
       return TextCellValue(value.toString());
     }).toList();
+  }
+
+  static List<String> buildExportColumns(List<FormDataModel> formSubmissions) {
+    if (formSubmissions.isEmpty) return const [];
+    final first = formSubmissions.first;
+    return buildExportHeaders(first.formNumber);
+  }
+
+  static List<String> buildExportHeaders(int formNumber) {
+    switch (formNumber) {
+      case 1:
+        return _form1Headers;
+      case 2:
+        return _form2Headers;
+      case 3:
+        return _form3Headers;
+      case 4:
+        return _form4Headers;
+      default:
+        return const ['Full Name', 'ITS Number', 'SF Number', 'Contact Number'];
+    }
+  }
+
+  static Map<String, dynamic> _flattenAnswers(dynamic rawValue) {
+    final flattened = <String, dynamic>{};
+
+    void walk(dynamic value, String prefix) {
+      if (value is Map) {
+        final map = value.map(
+          (key, entryValue) => MapEntry(key.toString(), entryValue),
+        );
+
+        if (map.isEmpty) {
+          if (prefix.isNotEmpty) flattened[prefix] = '';
+          return;
+        }
+
+        for (final entry in map.entries) {
+          final nextPrefix = prefix.isEmpty
+              ? entry.key
+              : '$prefix.${entry.key}';
+          walk(entry.value, nextPrefix);
+        }
+        return;
+      }
+
+      if (value is List) {
+        if (value.isEmpty) {
+          if (prefix.isNotEmpty) flattened[prefix] = '';
+          return;
+        }
+
+        for (int i = 0; i < value.length; i++) {
+          walk(value[i], '$prefix[$i]');
+        }
+        return;
+      }
+
+      if (prefix.isNotEmpty) {
+        flattened[prefix] = value;
+      }
+    }
+
+    if (rawValue is Map) {
+      walk(rawValue, '');
+    }
+
+    return flattened;
+  }
+
+  static dynamic _readAnswerValue(
+    Map<String, dynamic> answerMap,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      if (answerMap.containsKey(key)) {
+        return answerMap[key];
+      }
+    }
+    return '';
+  }
+
+  static int _intFromValue(dynamic value, {int defaultValue = 0}) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) {
+      return int.tryParse(value.trim()) ?? defaultValue;
+    }
+    return defaultValue;
+  }
+
+  static double _doubleFromValue(dynamic value, {double defaultValue = 0}) {
+    if (value == null) return defaultValue;
+    if (value is double) return value;
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      return double.tryParse(value.trim()) ?? defaultValue;
+    }
+    return defaultValue;
+  }
+
+  static String _stringFromValue(dynamic value) {
+    if (value == null) return '';
+    if (value is bool) return value ? 'Yes' : 'No';
+    return value.toString();
+  }
+
+  static List<dynamic> buildFormExportRow(
+    FormDataModel submission,
+    List<PersonModel> allPeople,
+    int formNumber,
+  ) {
+    final person = allPeople.firstWhere(
+      (p) => p.id == submission.personId,
+      orElse: () =>
+          PersonModel(id: submission.personId, name: '', its: 0, contact: ''),
+    );
+
+    final answerMap = Map<String, dynamic>.from(submission.answers);
+    final applianceMap = <String, int>{};
+    if (answerMap['appliances'] is List) {
+      for (final item in answerMap['appliances'] as List) {
+        if (item is Map) {
+          final name = _stringFromValue(item['name']).trim();
+          if (name.isEmpty) continue;
+          applianceMap[name] = _intFromValue(item['qty'], defaultValue: 0);
+        }
+      }
+    }
+
+    if (formNumber == 1) {
+      return [
+        person.name,
+        person.its,
+        person.sfNo ?? '',
+        person.contact,
+        _readAnswerValue(answerMap, ['address']),
+        _readAnswerValue(answerMap, ['houseType']),
+        _readAnswerValue(answerMap, ['rooms']),
+        _readAnswerValue(answerMap, ['noOfPersons']),
+        _readAnswerValue(answerMap, ['solarWillingness']),
+        _readAnswerValue(answerMap, ['landlordApproval']),
+      ];
+    }
+
+    if (formNumber == 2) {
+      final values = <dynamic>[
+        person.name,
+        person.its,
+        person.sfNo ?? '',
+        person.contact,
+      ];
+
+      for (final key in _form2Headers.skip(4)) {
+        if (key == 'KW installed') {
+          values.add(
+            _readAnswerValue(answerMap, ['totalWatts', 'kwInstalled']),
+          );
+          continue;
+        }
+        if (key == 'Panels wattage') {
+          values.add(_readAnswerValue(answerMap, ['panelsWattage']));
+          continue;
+        }
+        if (key == 'Inverter Capacity') {
+          values.add(_readAnswerValue(answerMap, ['inverterCapacity']));
+          continue;
+        }
+        if (key == 'Battery type') {
+          values.add(_readAnswerValue(answerMap, ['batteryType']));
+          continue;
+        }
+        if (key == 'Normal UPS installed') {
+          values.add(_readAnswerValue(answerMap, ['normalUpsInstalled']));
+          continue;
+        }
+        if (key == 'Existing Inverter') {
+          values.add(_readAnswerValue(answerMap, ['existingInverter']));
+          continue;
+        }
+        if (key == 'Existing Battery') {
+          values.add(_readAnswerValue(answerMap, ['existingBattery']));
+          continue;
+        }
+        if (key == 'Alternative Backup') {
+          values.add(_readAnswerValue(answerMap, ['alternativeBackup']));
+          continue;
+        }
+        if (key == 'Finance by mumim') {
+          values.add(_readAnswerValue(answerMap, ['financeByMumin']));
+          continue;
+        }
+        if (key == 'Finance as per expectation') {
+          values.add(_readAnswerValue(answerMap, ['financeExpectation']));
+          continue;
+        }
+        if (key == 'Filled by staff name') {
+          values.add(_readAnswerValue(answerMap, ['filledByStaff']));
+          continue;
+        }
+        if (key == 'Landlord name') {
+          values.add(_readAnswerValue(answerMap, ['landlordName']));
+          continue;
+        }
+        if (key == 'Landlord contact') {
+          values.add(_readAnswerValue(answerMap, ['landlordContact']));
+          continue;
+        }
+
+        values.add(applianceMap[key] ?? 0);
+      }
+
+      return values;
+    }
+
+    if (formNumber == 3) {
+      final materials = answerMap['materials'] is Map
+          ? Map<String, dynamic>.from(answerMap['materials'] as Map)
+          : <String, dynamic>{};
+
+      final values = <dynamic>[
+        person.name,
+        person.its,
+        person.sfNo ?? '',
+        person.contact,
+      ];
+
+      for (final key in _form3Headers.skip(4)) {
+        if (key == 'Roof type') {
+          values.add(_readAnswerValue(answerMap, ['roofType']));
+          continue;
+        }
+        if (key == 'Roof size') {
+          values.add(_readAnswerValue(answerMap, ['roofSize']));
+          continue;
+        }
+        if (key == 'Max solar panel count') {
+          values.add(_readAnswerValue(answerMap, ['houseNoOfSolarPanels']));
+          continue;
+        }
+        if (key == 'Floor mount panels count') {
+          values.add(_readAnswerValue(answerMap, ['floorMountNoOfSolar']));
+          continue;
+        }
+        if (key == 'Elevated mount panels count') {
+          values.add(_readAnswerValue(answerMap, ['elevatedNoOfSolar']));
+          continue;
+        }
+        if (key == 'Main DB board type') {
+          values.add(_readAnswerValue(answerMap, ['mainBoardType']));
+          continue;
+        }
+        if (key == 'DC wire length') {
+          values.add(_readAnswerValue(answerMap, ['dcWireLength']));
+          continue;
+        }
+        if (key == 'AC wire length') {
+          values.add(_readAnswerValue(answerMap, ['acWireLength']));
+          continue;
+        }
+        if (key == 'UPS wiring present') {
+          values.add(_readAnswerValue(answerMap, ['upsWiring']));
+          continue;
+        }
+        if (key == 'UPS wiring length') {
+          values.add(_readAnswerValue(answerMap, ['upsWiringLength']));
+          continue;
+        }
+        if (key == 'Separate room breaker') {
+          values.add(_readAnswerValue(answerMap, ['separateRoomWiseBreakers']));
+          continue;
+        }
+        if (key == 'Water tap on roof') {
+          values.add(_readAnswerValue(answerMap, ['waterConnectionOnRoof']));
+          continue;
+        }
+        if (key == 'Earthing cable length') {
+          values.add(_readAnswerValue(answerMap, ['earthingLength']));
+          continue;
+        }
+        if (key == 'Filled by staff name') {
+          values.add(_readAnswerValue(answerMap, ['filledByStaff']));
+          continue;
+        }
+        if (key == 'Survey remarks and observations') {
+          values.add(_readAnswerValue(answerMap, ['remarks']));
+          continue;
+        }
+
+        final materialKey = {
+          'DB Box': 'dbBox',
+          'Nuts and bolts': 'nutBolts',
+          'Clips 1"': 'clip1',
+          'Insulation tape': 'insulationTape',
+          'AC breaker': 'acBreaker',
+          'PVC pipe 3/4"': 'pipeLength34',
+          'Wire 7/0.29': 'wire7029',
+          'Sockets': 'socket',
+          'DC breaker': 'dcBreaker',
+          'PVC pipe 1"': 'pipeLength1',
+          'Wire 4mm (AC)': 'acWire4mm',
+          'Change over switch': 'changeOver',
+          'Screws': 'screw',
+          'Wire 4mm DC': 'dcWire4mm',
+          'Indication light': 'indicationLights',
+          'Rawal plugs': 'rawalPlug',
+          'Wire 40/0.76': 'wire4076',
+          'MC4 connectors': 'mc4Connector',
+          'Flexible pipe 3/4"': 'flexiblePipe34',
+          'Duct 25x25': 'duct25x25',
+          'Battery cable': 'batteryWire',
+          'Flexible pipe 1"': 'flexiblePipe1',
+          'Duct 1x1': 'duct1x1',
+          'Thimble lugs': 'thimble',
+          'Clips 3/4"': 'clip34',
+          'Pipe bands': 'band',
+        }[key];
+
+        values.add(materials[materialKey] ?? '');
+      }
+
+      return values;
+    }
+
+    if (formNumber == 4) {
+      return [
+        person.name,
+        person.its,
+        person.sfNo ?? '',
+        person.contact,
+        _readAnswerValue(answerMap, ['mardo']),
+        _readAnswerValue(answerMap, ['bairo']),
+        _readAnswerValue(answerMap, ['gairBaligh']),
+        _readAnswerValue(answerMap, ['earningMembers']),
+        _readAnswerValue(answerMap, ['dependentMembers']),
+        _readAnswerValue(answerMap, ['financialStatus']),
+        _readAnswerValue(answerMap, ['incomeSource']),
+        _readAnswerValue(answerMap, ['ownAmount']),
+        _readAnswerValue(answerMap, ['ownPercentage']),
+        _readAnswerValue(answerMap, ['qarzanAmount']),
+        _readAnswerValue(answerMap, ['hassanaTerm']),
+        _readAnswerValue(answerMap, ['hassanaMonths']),
+        _readAnswerValue(answerMap, ['financeExpectation']),
+        _readAnswerValue(answerMap, ['formFilledBy']),
+        _readAnswerValue(answerMap, ['remarks']),
+      ];
+    }
+
+    return [person.name, person.its, person.sfNo ?? '', person.contact];
   }
 
   static Future<List<List<Data?>>> pickAndReadExcel() async {
@@ -100,53 +573,12 @@ class ExcelService {
     final Excel excel = Excel.createExcel();
     final Sheet sheet = excel['Form $formNumber'];
 
-    final Map<String, String> columnMap = {};
-    final List<String> baseHeaders = [
-      'Person ID',
-      'Name',
-      'ITS Number',
-      'SF Number',
-      'Contact',
-    ];
+    final headers = buildExportHeaders(formNumber);
+    sheet.appendRow(_toCellRow(headers));
 
     for (final submission in formSubmissions) {
-      final answers = submission.answers;
-      if (answers is Map) {
-        for (final entry in answers.entries) {
-          final key = entry.key.toString();
-          if (!columnMap.containsKey(key)) {
-            columnMap[key] = key;
-          }
-        }
-      }
-    }
-
-    final allHeaders = [...baseHeaders, ...columnMap.keys.toList()];
-    sheet.appendRow(_toCellRow(allHeaders));
-
-    for (final submission in formSubmissions) {
-      final person = allPeople.firstWhere(
-        (p) => p.id == submission.personId,
-        orElse: () =>
-            PersonModel(id: submission.personId, name: '', its: 0, contact: ''),
-      );
-
-      final answerMap = submission.answers is Map
-          ? Map<String, dynamic>.from(submission.answers as Map)
-          : <String, dynamic>{};
-      final values = <dynamic>[
-        submission.personId,
-        person.name,
-        person.its,
-        person.sfNo ?? '',
-        person.contact,
-      ];
-
-      for (final key in columnMap.keys) {
-        values.add(_normalizeExportValue(answerMap[key]));
-      }
-
-      sheet.appendRow(_toCellRow(values));
+      final row = buildFormExportRow(submission, allPeople, formNumber);
+      sheet.appendRow(_toCellRow(row));
     }
 
     await _saveExcelFile(

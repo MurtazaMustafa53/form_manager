@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:form_manager/Controller/Excel_controller.dart';
 import 'package:form_manager/Model/Form%20Mappers/form5_mapper.dart';
 import 'package:form_manager/Model/Form%20Mappers/form_mapper_registry.dart';
 import 'package:form_manager/Model/form_data_model.dart';
@@ -131,5 +132,36 @@ void main() {
         expect(summary['address'], 'Street 1');
       },
     );
+
+    test('excel export expands nested answer fields into columns', () {
+      final forms = [
+        FormDataModel(
+          id: 'person_1_form_2',
+          personId: 'person_1',
+          formNumber: 2,
+          filledByStaffId: 'staff_1',
+          updatedAt: DateTime.now(),
+          answers: {
+            'totalWatts': 320,
+            'appliances': [
+              {'name': 'AC/DC Fan', 'watts': 30},
+              {'name': 'Tube Light', 'watts': 40},
+            ],
+            'materials': {'wire': '2', 'pipe': '5'},
+          },
+        ),
+      ];
+
+      final columns = ExcelService.buildExportColumns(forms);
+
+      expect(columns, contains('Person ID'));
+      expect(columns, contains('Name'));
+      expect(columns, contains('totalWatts'));
+      expect(columns, contains('appliances[0].name'));
+      expect(columns, contains('appliances[0].watts'));
+      expect(columns, contains('appliances[1].name'));
+      expect(columns, contains('materials.wire'));
+      expect(columns, contains('materials.pipe'));
+    });
   });
 }
