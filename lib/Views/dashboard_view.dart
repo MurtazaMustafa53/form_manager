@@ -20,6 +20,9 @@ class _DashboardViewState extends State<DashboardView> {
   // Active Chart Stage Filter: null = All, 1..5 = minimum form number submitted.
   int? _activeFormFilter;
 
+  // Toggle between showing filled (default) or unfilled profiles for active form filter
+  bool _showUnfilledOnly = false;
+
   int _sortColumnIndex = 1;
   bool _isAscending = true;
 
@@ -134,10 +137,18 @@ class _DashboardViewState extends State<DashboardView> {
     final query = _searchController.text.trim().toLowerCase();
 
     final filtered = people.where((person) {
-      // 1. Chart Stage Filter Logic
+      // 1. Chart Stage Filter Logic with Filled/Unfilled Toggle
       if (_activeFormFilter != null) {
-        if (person.completedFormCount < _activeFormFilter!) {
-          return false;
+        if (_showUnfilledOnly) {
+          // Show only profiles that HAVEN'T filled this form
+          if (person.completedFormCount >= _activeFormFilter!) {
+            return false;
+          }
+        } else {
+          // Show only profiles that HAVE filled this form
+          if (person.completedFormCount < _activeFormFilter!) {
+            return false;
+          }
         }
       }
 
@@ -618,10 +629,33 @@ class _DashboardViewState extends State<DashboardView> {
                               onPressed: () {
                                 setState(() {
                                   _activeFormFilter = null;
+                                  _showUnfilledOnly = false;
                                 });
                               },
                             ),
                         ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Description of dashboard numbers
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0F9FF),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF0284C7,
+                            ).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: const Text(
+                          'ℹ️ Form Progress shows how many profiles have completed each form at each stage. The numbers cascade: Form 1 denominator is all profiles, Form 2 denominator is only profiles that completed Form 1, etc. Click any card to filter and view related profiles.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF0C4A6E),
+                            height: 1.4,
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Row(
@@ -707,12 +741,24 @@ class _DashboardViewState extends State<DashboardView> {
                                 _activeFormFilter == null
                                     ? 'Client Survey List'
                                     : (_activeFormFilter == 1
-                                          ? 'Filtered List: Form 1 Filled (33%)'
+                                          ? (_showUnfilledOnly
+                                                ? 'Filtered List: Form 1 NOT Filled'
+                                                : 'Filtered List: Form 1 Filled')
                                           : _activeFormFilter == 2
-                                          ? 'Filtered List: Forms 1 & 2 Filled (66%)'
+                                          ? (_showUnfilledOnly
+                                                ? 'Filtered List: Forms 1 & 2 NOT Filled'
+                                                : 'Filtered List: Forms 1 & 2 Filled')
                                           : _activeFormFilter == 3
-                                          ? 'Filtered List: All Forms Completed (100%)'
-                                          : 'Filtered List: Fully Completed Profiles'),
+                                          ? (_showUnfilledOnly
+                                                ? 'Filtered List: Forms 1-3 NOT Filled'
+                                                : 'Filtered List: Forms 1-3 Filled')
+                                          : _activeFormFilter == 4
+                                          ? (_showUnfilledOnly
+                                                ? 'Filtered List: Forms 1-4 NOT Filled'
+                                                : 'Filtered List: Forms 1-4 Filled')
+                                          : (_showUnfilledOnly
+                                                ? 'Filtered List: All Forms NOT Filled'
+                                                : 'Filtered List: All Forms Filled')),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
@@ -777,6 +823,62 @@ class _DashboardViewState extends State<DashboardView> {
                                 ),
                               ),
                               const SizedBox(width: 12),
+                              if (_activeFormFilter != null)
+                                Container(
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade300,
+                                    ),
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          _showUnfilledOnly =
+                                              !_showUnfilledOnly;
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              _showUnfilledOnly
+                                                  ? Icons
+                                                        .check_box_outline_blank
+                                                  : Icons.check_box,
+                                              size: 18,
+                                              color: _showUnfilledOnly
+                                                  ? Colors.grey.shade600
+                                                  : const Color(0xFF2563EB),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _showUnfilledOnly
+                                                  ? 'Unfilled'
+                                                  : 'Filled',
+                                              style: TextStyle(
+                                                fontSize: 13,
+                                                color: _showUnfilledOnly
+                                                    ? Colors.grey.shade600
+                                                    : const Color(0xFF2563EB),
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              const SizedBox(width: 12),
                               Container(
                                 height: 40,
                                 padding: const EdgeInsets.symmetric(
@@ -819,6 +921,49 @@ class _DashboardViewState extends State<DashboardView> {
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 12),
+                              // Export filtered profiles button
+                              if (_activeFormFilter != null)
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    try {
+                                      final provider = Provider.of<AppProvider>(
+                                        context,
+                                        listen: false,
+                                      );
+                                      await provider
+                                          .exportFilteredProfilesToExcel(
+                                            displayedPeople,
+                                          );
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Filtered profiles exported to Downloads folder',
+                                            ),
+                                            duration: Duration(seconds: 3),
+                                          ),
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(content: Text('Error: $e')),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  icon: const Icon(Icons.download),
+                                  label: const Text('Export Profiles'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF059669),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
                             ],
                           ),
                         ],
@@ -912,8 +1057,10 @@ class _DashboardViewState extends State<DashboardView> {
           setState(() {
             if (_activeFormFilter == stageNumber) {
               _activeFormFilter = null; // Toggle off on second click
+              _showUnfilledOnly = false; // Reset to filled view
             } else {
               _activeFormFilter = stageNumber; // Set active stage filter
+              _showUnfilledOnly = false; // Always start with filled view
             }
           });
         },

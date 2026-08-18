@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:form_manager/Model/person_model.dart';
+import 'package:form_manager/Controller/provider_controller.dart';
+import 'package:provider/provider.dart';
 
 class SummaryDashboardView extends StatefulWidget {
   const SummaryDashboardView({super.key});
@@ -356,6 +358,26 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Description card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+            ),
+          ),
+          child: const Text(
+            '📋 Form 1 shows personal data and initial solar willingness. The chart displays how many applicants are willing to install solar and landlord approval status.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF1E293B),
+              height: 1.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -401,6 +423,39 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                       color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      try {
+                        final provider = Provider.of<AppProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await provider.exportForm1ToExcel();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Form 1 data exported to Downloads folder',
+                              ),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export to Excel'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2563EB),
+                      foregroundColor: Colors.white,
                     ),
                   ),
                 ],
@@ -466,7 +521,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
     final Map<String, int> financeCounts = {};
 
     for (var p in form2People) {
-      grandTotalWattage += p.totalWattage ?? 0;
+      grandTotalWattage += p.totalWattage;
       final val = (p.financeAsPerExpectation.isNotEmpty)
           ? p.financeAsPerExpectation
           : 'Unspecified';
@@ -476,6 +531,26 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Description card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF10B981).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xFF10B981).withValues(alpha: 0.3),
+            ),
+          ),
+          child: const Text(
+            '⚡ Form 2 contains appliance inventory data including total wattage requirements and financing expectations. Total wattage is summed across all applicants.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF1E293B),
+              height: 1.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -486,13 +561,51 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Finance as per Expectation Breakdown',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Color(0xFF1E293B),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Finance as per Expectation Breakdown',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      try {
+                        final provider = Provider.of<AppProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await provider.exportForm2ToExcel();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Form 2 data exported to Downloads folder',
+                              ),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export to Excel'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               if (financeCounts.isEmpty)
@@ -591,11 +704,9 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
                               ),
                             ),
                             DataCell(Text(person.its.toString())),
-                            DataCell(Text('${person.totalWattage ?? 0} W')),
-                            DataCell(Text(person.financeByMomin ?? 'N/A')),
-                            DataCell(
-                              Text(person.financeAsPerExpectation ?? 'N/A'),
-                            ),
+                            DataCell(Text('${person.totalWattage} W')),
+                            DataCell(Text(person.financeByMomin)),
+                            DataCell(Text(person.financeAsPerExpectation)),
                           ],
                         );
                       }),
@@ -642,49 +753,112 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   Widget _buildForm4Summary(List<PersonModel> people) {
     final form4People = people.where((p) => p.completedFormCount >= 4).toList();
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Form 4 Submitted: ${form4People.length} / ${people.length}',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Color(0xFF1E293B),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Description card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
             ),
           ),
-          const SizedBox(height: 16),
-          if (form4People.isEmpty)
-            const Text('No Form 4 submissions found.')
-          else
-            SizedBox(
-              width: double.infinity,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Name')),
-                  DataColumn(label: Text('ITS')),
-                  DataColumn(label: Text('Contact')),
-                ],
-                rows: form4People.map((person) {
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(person.name)),
-                      DataCell(Text(person.its.toString())),
-                      DataCell(Text(person.contact)),
-                    ],
-                  );
-                }).toList(),
-              ),
+          child: const Text(
+            '✅ Form 4 is for review and approvals stage where supervisors verify and approve the project scope and financial arrangements before finance finalization.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF1E293B),
+              height: 1.5,
             ),
-        ],
-      ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Form 4 Submitted: ${form4People.length} / ${people.length}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      try {
+                        final provider = Provider.of<AppProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await provider.exportForm4ToExcel();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Form 4 data exported to Downloads folder',
+                              ),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export to Excel'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFF59E0B),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (form4People.isEmpty)
+                const Text('No Form 4 submissions found.')
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Name')),
+                      DataColumn(label: Text('ITS')),
+                      DataColumn(label: Text('Contact')),
+                    ],
+                    rows: form4People.map((person) {
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(person.name)),
+                          DataCell(Text(person.its.toString())),
+                          DataCell(Text(person.contact)),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -694,55 +868,118 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   Widget _buildForm5Summary(List<PersonModel> people) {
     final form5People = people.where((p) => p.completedFormCount >= 5).toList();
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Form 5 Submitted: ${form5People.length} / ${people.length}',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: Color(0xFF1E293B),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Description card
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: const Color(0xFFEF4444).withValues(alpha: 0.3),
             ),
           ),
-          const SizedBox(height: 16),
-          if (form5People.isEmpty)
-            const Text('No Form 5 submissions found.')
-          else
-            SizedBox(
-              width: double.infinity,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Name')),
-                  DataColumn(label: Text('ITS')),
-                  DataColumn(label: Text('Solar Panels')),
-                  DataColumn(label: Text('Inverters')),
-                  DataColumn(label: Text('Battery')),
-                  DataColumn(label: Text('Structure')),
-                ],
-                rows: form5People.map((person) {
-                  return DataRow(
-                    cells: [
-                      DataCell(Text(person.name)),
-                      DataCell(Text(person.its.toString())),
-                      DataCell(Text(person.numberOfSolarPanels.toString())),
-                      DataCell(Text(person.numberOfInverter.toString())),
-                      DataCell(Text(person.lithiumBattery.toString())),
-                      DataCell(Text(person.structure)),
-                    ],
-                  );
-                }).toList(),
-              ),
+          child: const Text(
+            '💰 Form 5 is the finance finalization stage. It includes installation item quantities, material costs, and contribution split (Own Contribution vs Qarzan Hasana). This is the final step before project approval.',
+            style: TextStyle(
+              fontSize: 13,
+              color: Color(0xFF1E293B),
+              height: 1.5,
             ),
-        ],
-      ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Form 5 Submitted: ${form5People.length} / ${people.length}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: () async {
+                      try {
+                        final provider = Provider.of<AppProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await provider.exportForm5ToExcel();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Form 5 data exported to Downloads folder',
+                              ),
+                              duration: Duration(seconds: 3),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                        }
+                      }
+                    },
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export to Excel'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF4444),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              if (form5People.isEmpty)
+                const Text('No Form 5 submissions found.')
+              else
+                SizedBox(
+                  width: double.infinity,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Name')),
+                      DataColumn(label: Text('ITS')),
+                      DataColumn(label: Text('Solar Panels')),
+                      DataColumn(label: Text('Inverters')),
+                      DataColumn(label: Text('Battery')),
+                      DataColumn(label: Text('Structure')),
+                    ],
+                    rows: form5People.map((person) {
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(person.name)),
+                          DataCell(Text(person.its.toString())),
+                          DataCell(Text(person.numberOfSolarPanels.toString())),
+                          DataCell(Text(person.numberOfInverter.toString())),
+                          DataCell(Text(person.lithiumBattery.toString())),
+                          DataCell(Text(person.structure)),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -867,6 +1104,73 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Description card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                ),
+              ),
+              child: const Text(
+                '🔧 Form 3 contains electrical audit data including roof types, panel placement locations, wiring requirements, and bill of materials. The charts show aggregated infrastructure requirements across all sites.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF1E293B),
+                  height: 1.5,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Audit Analytics & BOM Aggregation',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      final provider = Provider.of<AppProvider>(
+                        context,
+                        listen: false,
+                      );
+                      await provider.exportForm3ToExcel();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Form 3 data exported to Downloads folder',
+                            ),
+                            duration: Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(
+                          context,
+                        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.download),
+                  label: const Text('Export to Excel'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF8B5CF6),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
             // METRIC CARDS ROW
             Row(
               children: [

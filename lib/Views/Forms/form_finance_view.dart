@@ -197,35 +197,6 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     return total + _installationTotals().round();
   }
 
-  double _calculateCompletionRatio() {
-    final defs = form3.buildMaterialFieldDefinitions();
-    final totalFields = 12 + defs.length;
-    int filled = 0;
-    if (_landlordApproval.isNotEmpty) filled++;
-    if (_solarWillingness.isNotEmpty) filled++;
-    if (_financeByMumin.isNotEmpty) filled++;
-    if (_financeExpectation.isNotEmpty) filled++;
-    if (_numberOfSolarPanelsController.text.trim().isNotEmpty) filled++;
-    if (_numberOfInverterController.text.trim().isNotEmpty) filled++;
-    if (_lithiumBatteryController.text.trim().isNotEmpty) filled++;
-    if (_selectedStructure != null && _selectedStructure!.isNotEmpty) filled++;
-    if (_structureQuantityController.text.trim().isNotEmpty) filled++;
-    if (_solarPanelAmountController.text.trim().isNotEmpty) filled++;
-    if (_inverterAmountController.text.trim().isNotEmpty) filled++;
-    if (_lithiumBatteryAmountController.text.trim().isNotEmpty) filled++;
-    if (_structureAmountController.text.trim().isNotEmpty) filled++;
-    if (_ownContributionController.text.trim().isNotEmpty) filled++;
-    if (_qarzanHasanaController.text.trim().isNotEmpty) filled++;
-    if (_totalContributionController.text.trim().isNotEmpty) filled++;
-    for (var def in defs) {
-      final key = def['key']!;
-      final mult = _multControllers[key]?.text.trim() ?? '';
-      if (mult.isNotEmpty) filled++;
-    }
-    if (totalFields == 0) return 0.0;
-    return (filled / totalFields).clamp(0.0, 1.0);
-  }
-
   Future<void> _handleSaveDraft() async {
     setState(() => _isSavingDraft = true);
     final provider = Provider.of<AppProvider>(context, listen: false);

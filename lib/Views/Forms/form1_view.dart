@@ -68,8 +68,8 @@ class _Form1ViewState extends State<Form1View> {
     _landlordNameController = TextEditingController();
     _landlordContactController = TextEditingController();
 
-    _willingToSolar = widget.person.willingToSolar! ? 'Yes' : 'No';
-    _landlordApproval = widget.person.landlordApproval! ? 'Yes' : 'No';
+    _willingToSolar = widget.person.willingToSolar ? 'Yes' : 'No';
+    _landlordApproval = widget.person.landlordApproval ? 'Yes' : 'No';
 
     _isReadOnly =
         widget.readOnly ||
@@ -392,7 +392,7 @@ class _Form1ViewState extends State<Form1View> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Calculated Total Watts: ${widget.person.totalWattage.toInt() ?? 0} W',
+                          'Calculated Total Watts: ${widget.person.totalWattage.toInt()} W',
                           style: const TextStyle(
                             color: Color(0xFF2563EB),
                             fontWeight: FontWeight.bold,

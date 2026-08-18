@@ -222,6 +222,85 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // --- EXPORT TO EXCEL METHODS ---
+
+  /// Export Form 1 data to Excel (Dev, Admin, Finance allowed)
+  Future<void> exportForm1ToExcel() async {
+    if (!isDev && !isAdmin && !isFinance) {
+      throw Exception(
+        'Unauthorized: Only Dev, Admin, or Finance can export data.',
+      );
+    }
+    final form1People = _people
+        .where((p) => p.completedFormCount >= 1)
+        .toList();
+    await ExcelService.exportForm1Data(form1People);
+  }
+
+  /// Export Form 2 data to Excel (Dev, Admin, Finance allowed)
+  Future<void> exportForm2ToExcel() async {
+    if (!isDev && !isAdmin && !isFinance) {
+      throw Exception(
+        'Unauthorized: Only Dev, Admin, or Finance can export data.',
+      );
+    }
+    final form2People = _people
+        .where((p) => p.completedFormCount >= 2)
+        .toList();
+    await ExcelService.exportForm2Data(form2People);
+  }
+
+  /// Export Form 3 data to Excel (Dev, Admin, Finance allowed)
+  Future<void> exportForm3ToExcel() async {
+    if (!isDev && !isAdmin && !isFinance) {
+      throw Exception(
+        'Unauthorized: Only Dev, Admin, or Finance can export data.',
+      );
+    }
+    final form3People = _people
+        .where((p) => p.completedFormCount >= 3)
+        .toList();
+    await ExcelService.exportForm3Data(form3People);
+  }
+
+  /// Export Form 4 data to Excel (Dev, Admin, Finance allowed)
+  Future<void> exportForm4ToExcel() async {
+    if (!isDev && !isAdmin && !isFinance) {
+      throw Exception(
+        'Unauthorized: Only Dev, Admin, or Finance can export data.',
+      );
+    }
+    final form4People = _people
+        .where((p) => p.completedFormCount >= 4)
+        .toList();
+    await ExcelService.exportForm4Data(form4People);
+  }
+
+  /// Export Form 5 (Finance) data to Excel (Dev, Admin, Finance allowed)
+  Future<void> exportForm5ToExcel() async {
+    if (!isDev && !isAdmin && !isFinance) {
+      throw Exception(
+        'Unauthorized: Only Dev, Admin, or Finance can export data.',
+      );
+    }
+    final form5People = _people
+        .where((p) => p.completedFormCount >= 5)
+        .toList();
+    await ExcelService.exportForm5Data(form5People);
+  }
+
+  /// Export filtered profiles to Excel (Dev, Admin, Finance allowed)
+  Future<void> exportFilteredProfilesToExcel(
+    List<PersonModel> filteredPeople,
+  ) async {
+    if (!isDev && !isAdmin && !isFinance) {
+      throw Exception(
+        'Unauthorized: Only Dev, Admin, or Finance can export data.',
+      );
+    }
+    await ExcelService.exportProfilesSummary(filteredPeople);
+  }
+
   @override
   void dispose() {
     _peopleSubscription?.cancel();

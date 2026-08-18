@@ -365,17 +365,6 @@ class _Form3ViewState extends State<Form3View> {
     }
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 16,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1E293B),
-      ),
-    );
-  }
-
   Widget _buildTextField(
     TextEditingController controller,
     String label, {
