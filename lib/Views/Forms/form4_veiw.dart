@@ -76,7 +76,7 @@ class _Form4ViewState extends State<Form4View> {
   final List<String> _financeExpectationOptions = ['Yes', 'No'];
 
   final _ownAmountController = TextEditingController();
-  final _ownPercentageController = TextEditingController();
+  final _totalAmount = TextEditingController();
 
   final _qarzanAmountController = TextEditingController();
   String _hassanaTerm = 'Short-Term';
@@ -91,12 +91,33 @@ class _Form4ViewState extends State<Form4View> {
   final _amilSignController = TextEditingController();
   final _applicantSignController = TextEditingController();
 
+  double _parseMoneyInput(String? value) {
+    if (value == null || value.trim().isEmpty) return 0;
+    return double.tryParse(value.replaceAll(',', '').trim()) ?? 0;
+  }
+
+  String _formatMoneyValue(double value) {
+    if (value % 1 == 0) return value.toInt().toString();
+    return value.toStringAsFixed(2);
+  }
+
+  void _syncTotalMuminContribution() {
+    final ownAmount = _parseMoneyInput(_ownAmountController.text);
+    final qarzanAmount = _parseMoneyInput(_qarzanAmountController.text);
+    final nextTotal = _formatMoneyValue(ownAmount + qarzanAmount);
+    if (_totalAmount.text != nextTotal) {
+      _totalAmount.text = nextTotal;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _isReadOnly =
         widget.readOnly ||
         Provider.of<AppProvider>(context, listen: false).isViewer;
+    _ownAmountController.addListener(_syncTotalMuminContribution);
+    _qarzanAmountController.addListener(_syncTotalMuminContribution);
     _loadInitialData();
   }
 
@@ -110,7 +131,7 @@ class _Form4ViewState extends State<Form4View> {
       _earningMembersController.text.trim(),
       _dependentMembersController.text.trim(),
       _ownAmountController.text.trim(),
-      _ownPercentageController.text.trim(),
+      _totalAmount.text.trim(),
       _qarzanAmountController.text.trim(),
       _hassanaMonthsController.text.trim(),
       _jammatContributionController.text.trim(),
@@ -148,7 +169,7 @@ class _Form4ViewState extends State<Form4View> {
         _incomeSource = ans['incomeSource'] ?? _incomeSource;
 
         _ownAmountController.text = ans['ownAmount'] ?? '';
-        _ownPercentageController.text = ans['ownPercentage'] ?? '';
+        _syncTotalMuminContribution();
 
         _qarzanAmountController.text = ans['qarzanAmount'] ?? '';
         _hassanaTerm = ans['hassanaTerm'] ?? _hassanaTerm;
@@ -175,7 +196,7 @@ class _Form4ViewState extends State<Form4View> {
     _earningMembersController.dispose();
     _dependentMembersController.dispose();
     _ownAmountController.dispose();
-    _ownPercentageController.dispose();
+    _totalAmount.dispose();
     _qarzanAmountController.dispose();
     _hassanaMonthsController.dispose();
     _jammatContributionController.dispose();
@@ -204,7 +225,10 @@ class _Form4ViewState extends State<Form4View> {
       'incomeSource': _incomeSource,
 
       'ownAmount': _ownAmountController.text.trim(),
-      'ownPercentage': _ownPercentageController.text.trim(),
+      'totalMuminContribution': _formatMoneyValue(
+        _parseMoneyInput(_ownAmountController.text) +
+            _parseMoneyInput(_qarzanAmountController.text),
+      ),
 
       'qarzanAmount': _qarzanAmountController.text.trim(),
       'hassanaTerm': _hassanaTerm,
@@ -330,6 +354,7 @@ class _Form4ViewState extends State<Form4View> {
     TextEditingController controller,
     String label, {
     bool isNumeric = false,
+    bool readOnly = false,
   }) {
     return SizedBox(
       width: 260,
@@ -337,6 +362,7 @@ class _Form4ViewState extends State<Form4View> {
         controller: controller,
         keyboardType: isNumeric ? TextInputType.number : TextInputType.text,
         enabled: !_isReadOnly,
+        readOnly: readOnly,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
@@ -516,14 +542,16 @@ class _Form4ViewState extends State<Form4View> {
                           'Own: Amount',
                           isNumeric: true,
                         ),
-                        _buildTextField(
-                          _ownPercentageController,
-                          'Percentage',
-                          isNumeric: true,
-                        ),
+
                         _buildTextField(
                           _qarzanAmountController,
                           'Qarzan Amount',
+                        ),
+                        _buildTextField(
+                          _totalAmount,
+                          'Total Mumin Contribution',
+                          isNumeric: true,
+                          readOnly: true,
                         ),
                         DropdownButton<String>(
                           value: _hassanaTerm,

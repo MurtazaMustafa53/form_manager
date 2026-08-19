@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 import 'package:provider/provider.dart';
@@ -71,8 +72,7 @@ class _ReportViewState extends State<ReportView> {
     if (!provider.isDev && !provider.isFinance) {
       setState(() {
         _isLoading = false;
-        _error =
-            'Access denied. Reports are available to Dev and Finance accounts.';
+        _error = 'Access denied. Reports are available to Finance accounts.';
       });
       return;
     }
@@ -84,6 +84,7 @@ class _ReportViewState extends State<ReportView> {
             provider.getSubmittedForm(person.id, 2),
             provider.getSubmittedForm(person.id, 4),
           ]);
+          if (forms[0] == null) return null;
           return _ReportOneRow(
             name: person.name,
             its: person.its.toString(),
@@ -99,7 +100,7 @@ class _ReportViewState extends State<ReportView> {
 
       if (!mounted) return;
       setState(() {
-        _rows = rows;
+        _rows = rows.whereType<_ReportOneRow>().toList();
         _isLoading = false;
       });
       _sortRows();
@@ -193,7 +194,7 @@ class _ReportViewState extends State<ReportView> {
       body: !hasAccess
           ? const Center(
               child: Text(
-                'Access denied. Reports are available to Dev and Finance accounts.',
+                'Access denied. Reports are available to Finance accounts.',
               ),
             )
           : _isLoading
@@ -210,6 +211,8 @@ class _ReportViewState extends State<ReportView> {
                     runSpacing: 16,
                     children: [_buildReportCard()],
                   ),
+                  const SizedBox(height: 24),
+                  _buildExpectationChart(),
                   const SizedBox(height: 24),
                   _buildReportOneTable(),
                 ],
@@ -346,6 +349,133 @@ class _ReportViewState extends State<ReportView> {
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExpectationChart() {
+    final form2Yes = _rows
+        .where((row) => _ReportOneRow._isYes(row.form2Expectation))
+        .length;
+    final form4Yes = _rows
+        .where((row) => _ReportOneRow._isYes(row.form4Expectation))
+        .length;
+    final finalYes = _rows
+        .where((row) => _ReportOneRow._isYes(row.finalExpectation))
+        .length;
+
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        _buildExpectationPie(
+          title: 'Form 2 Expectation',
+          yesCount: form2Yes,
+          color: const Color(0xFF2563EB),
+        ),
+        _buildExpectationPie(
+          title: 'Form 4 Expectation',
+          yesCount: form4Yes,
+          color: const Color(0xFF0F766E),
+        ),
+        _buildExpectationPie(
+          title: 'Final Expectation',
+          yesCount: finalYes,
+          color: const Color(0xFFF59E0B),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExpectationPie({
+    required String title,
+    required int yesCount,
+    required Color color,
+  }) {
+    final noCount = _rows.length - yesCount;
+    final hasData = _rows.isNotEmpty;
+    final sections = hasData
+        ? [
+            PieChartSectionData(
+              color: color,
+              value: yesCount.toDouble(),
+              title: yesCount == 0 ? '' : '$yesCount',
+              radius: 42,
+              titleStyle: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            PieChartSectionData(
+              color: Colors.grey.shade300,
+              value: noCount.toDouble(),
+              title: noCount == 0 ? '' : '$noCount',
+              radius: 42,
+              titleStyle: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ]
+        : [
+            PieChartSectionData(
+              color: Colors.grey.shade300,
+              value: 1,
+              title: '0',
+              radius: 42,
+            ),
+          ];
+
+    return Container(
+      width: 360,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              SizedBox(
+                height: 130,
+                width: 130,
+                child: PieChart(
+                  PieChartData(
+                    centerSpaceRadius: 32,
+                    sectionsSpace: 2,
+                    sections: sections,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildChartLegend('Yes', yesCount, color),
+                  const SizedBox(height: 10),
+                  _buildChartLegend('No', noCount, Colors.grey.shade400),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChartLegend(String label, int count, Color color) {
+    return Row(
+      children: [
+        Container(width: 10, height: 10, color: color),
+        const SizedBox(width: 8),
+        Text(label),
+        const SizedBox(width: 12),
+        Text('$count', style: const TextStyle(fontWeight: FontWeight.bold)),
+      ],
     );
   }
 }
