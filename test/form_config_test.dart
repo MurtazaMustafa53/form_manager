@@ -5,6 +5,7 @@ import 'package:form_manager/Model/Form%20Mappers/form_mapper_registry.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Views/Forms/form2_view.dart';
 import 'package:form_manager/Views/Forms/form3_view.dart';
+import 'package:form_manager/Views/Forms/form_finance_view.dart';
 
 void main() {
   group('Form configuration helpers', () {
@@ -53,6 +54,15 @@ void main() {
       expect(keys.indexOf('flexiblePipe1'), lessThan(keys.indexOf('duct1x1')));
       expect(keys.indexOf('thimble'), lessThan(keys.indexOf('band')));
       expect(keys.indexOf('clip34'), lessThan(keys.indexOf('band')));
+    });
+
+    test('finance uses the configured default prices and fallback price', () {
+      expect(financeDefaultPrice('dbBox'), 1200);
+      expect(financeDefaultPrice('nutBolts'), 25);
+      expect(financeDefaultPrice('flexiblePipe34'), 25);
+      expect(financeDefaultPrice('band'), 35);
+      expect(financeDefaultPrice('duct1x1'), 1);
+      expect(financeDefaultPrice('solarPanel'), 1);
     });
 
     test(

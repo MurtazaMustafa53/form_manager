@@ -5,6 +5,36 @@ import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Model/person_model.dart';
 import 'package:form_manager/Views/Forms/form3_view.dart' as form3;
 
+const Map<String, int> financeDefaultPrices = {
+  'dbBox': 1200,
+  'nutBolts': 25,
+  'clip1': 16,
+  'insulationTape': 60,
+  'acBreaker': 2100,
+  'pipeLength34': 30,
+  'wire7029': 180,
+  'socket': 20,
+  'dcBreaker': 2800,
+  'pipeLength1': 45,
+  'acWire4mm': 235,
+  'changeOver': 3600,
+  'screw': 350,
+  'dcWire4mm': 235,
+  'indicationLights': 100,
+  'rawalPlug': 100,
+  'wire4076': 100,
+  'mc4Connector': 220,
+  'flexiblePipe34': 25,
+  'duct25x25': 350,
+  'batteryWire': 1200,
+  'flexiblePipe1': 35,
+  'thimble': 60,
+  'clip34': 12,
+  'band': 35,
+};
+
+int financeDefaultPrice(String key) => financeDefaultPrices[key] ?? 1;
+
 class FormFinanceView extends StatefulWidget {
   final PersonModel person;
 
@@ -24,11 +54,11 @@ class _FormFinanceViewState extends State<FormFinanceView> {
   final _numberOfInverterController = TextEditingController(text: '1');
   final _lithiumBatteryController = TextEditingController(text: '1');
   final _structureQuantityController = TextEditingController(text: '1');
-  final _solarPanelAmountController = TextEditingController(text: '0');
-  final _inverterAmountController = TextEditingController(text: '0');
-  final _lithiumBatteryAmountController = TextEditingController(text: '0');
-  final _structureAmountController = TextEditingController(text: '0');
-  final _labourPriceController = TextEditingController(text: '0');
+  final _solarPanelAmountController = TextEditingController(text: '1');
+  final _inverterAmountController = TextEditingController(text: '1');
+  final _lithiumBatteryAmountController = TextEditingController(text: '1');
+  final _structureAmountController = TextEditingController(text: '1');
+  final _labourPriceController = TextEditingController(text: '1');
   final _ownContributionController = TextEditingController(text: '0');
   final _qarzanHasanaController = TextEditingController(text: '0');
   final _totalContributionController = TextEditingController(text: '0');
@@ -105,14 +135,14 @@ class _FormFinanceViewState extends State<FormFinanceView> {
       _structureQuantityController.text =
           (financeAnswers['structureQuantity'] ?? 1).toString();
       _solarPanelAmountController.text =
-          (financeAnswers['solarPanelAmount'] ?? 0).toString();
-      _inverterAmountController.text = (financeAnswers['inverterAmount'] ?? 0)
+          (financeAnswers['solarPanelAmount'] ?? 1).toString();
+      _inverterAmountController.text = (financeAnswers['inverterAmount'] ?? 1)
           .toString();
       _lithiumBatteryAmountController.text =
-          (financeAnswers['lithiumBatteryAmount'] ?? 0).toString();
-      _structureAmountController.text = (financeAnswers['structureAmount'] ?? 0)
+          (financeAnswers['lithiumBatteryAmount'] ?? 1).toString();
+      _structureAmountController.text = (financeAnswers['structureAmount'] ?? 1)
           .toString();
-      _labourPriceController.text = (financeAnswers['labourPrice'] ?? 0)
+      _labourPriceController.text = (financeAnswers['labourPrice'] ?? 1)
           .toString();
       _ownContributionController.text = (financeAnswers['ownContribution'] ?? 0)
           .toString();
@@ -124,10 +154,23 @@ class _FormFinanceViewState extends State<FormFinanceView> {
       final mats = (f3?.answers['materials'] ?? {}) as Map<String, dynamic>;
       _materials = Map<String, dynamic>.from(mats);
 
-      // initialize multiplier controllers
+      final savedMaterialPrices = <String, dynamic>{};
+      final savedMaterials = financeAnswers['materials'];
+      if (savedMaterials is List) {
+        for (final material in savedMaterials) {
+          if (material is Map && material['key'] != null) {
+            savedMaterialPrices[material['key'].toString()] =
+                material['multiplier'];
+          }
+        }
+      }
+
       for (var def in form3.buildMaterialFieldDefinitions()) {
         final key = def['key']!;
-        _multControllers[key] = TextEditingController(text: '1');
+        _multControllers[key] = TextEditingController(
+          text: (savedMaterialPrices[key] ?? financeDefaultPrice(key))
+              .toString(),
+        );
       }
 
       _isLoading = false;
