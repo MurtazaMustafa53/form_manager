@@ -4,6 +4,7 @@ import 'package:form_manager/Model/person_model.dart';
 import 'package:form_manager/Views/login_view.dart';
 import 'package:form_manager/Views/profile_detail_view.dart';
 import 'package:form_manager/Views/summary_dashboard_view.dart';
+import 'package:form_manager/Views/report_view.dart';
 import 'package:provider/provider.dart';
 
 class DashboardView extends StatefulWidget {
@@ -140,8 +141,12 @@ class _DashboardViewState extends State<DashboardView> {
       // 1. Chart Stage Filter Logic with Filled/Unfilled Toggle
       if (_activeFormFilter != null) {
         if (_showUnfilledOnly) {
-          // Show only profiles that HAVEN'T filled this form
-          if (person.completedFormCount >= _activeFormFilter!) {
+          // Remaining profiles must have completed the previous form in the cascade.
+          final hasCompletedPreviousForm =
+              _activeFormFilter == 1 ||
+              person.completedFormCount >= _activeFormFilter! - 1;
+          if (!hasCompletedPreviousForm ||
+              person.completedFormCount >= _activeFormFilter!) {
             return false;
           }
         } else {
@@ -324,6 +329,22 @@ class _DashboardViewState extends State<DashboardView> {
           final form3Denominator = form2SubmittedCount;
           final form4Denominator = form3SubmittedCount;
           final form5Denominator = form4SubmittedCount;
+          final activeFormCompleted = switch (_activeFormFilter) {
+            1 => form1SubmittedCount,
+            2 => form2SubmittedCount,
+            3 => form3SubmittedCount,
+            4 => form4SubmittedCount,
+            5 => form5SubmittedCount,
+            _ => 0,
+          };
+          final activeFormTotal = switch (_activeFormFilter) {
+            1 => form1Denominator,
+            2 => form2Denominator,
+            3 => form3Denominator,
+            4 => form4Denominator,
+            5 => form5Denominator,
+            _ => 0,
+          };
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -594,6 +615,11 @@ class _DashboardViewState extends State<DashboardView> {
                 ),
                 const SizedBox(height: 24),
 
+                if (isDev || provider.isFinance) ...[
+                  _buildReportCard(context),
+                  const SizedBox(height: 24),
+                ],
+
                 // Progress cards show how many profiles have submitted each form.
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -666,7 +692,6 @@ class _DashboardViewState extends State<DashboardView> {
                               title: 'Form 1 Submitted',
                               completed: form1SubmittedCount,
                               total: form1Denominator,
-                              subtitle: 'Out of $form1Denominator profiles',
                               color: const Color(0xFF2563EB),
                             ),
                           ),
@@ -677,7 +702,6 @@ class _DashboardViewState extends State<DashboardView> {
                               title: 'Form 2 Submitted',
                               completed: form2SubmittedCount,
                               total: form2Denominator,
-                              subtitle: 'Out of $form2Denominator profiles',
                               color: const Color(0xFF10B981),
                             ),
                           ),
@@ -688,7 +712,6 @@ class _DashboardViewState extends State<DashboardView> {
                               title: 'Form 3 Submitted',
                               completed: form3SubmittedCount,
                               total: form3Denominator,
-                              subtitle: 'Out of $form3Denominator profiles',
                               color: const Color(0xFF8B5CF6),
                             ),
                           ),
@@ -699,7 +722,6 @@ class _DashboardViewState extends State<DashboardView> {
                               title: 'Form 4 Submitted',
                               completed: form4SubmittedCount,
                               total: form4Denominator,
-                              subtitle: 'Out of $form4Denominator profiles',
                               color: const Color(0xFFF59E0B),
                             ),
                           ),
@@ -710,7 +732,6 @@ class _DashboardViewState extends State<DashboardView> {
                               title: 'Form 5 Submitted',
                               completed: form5SubmittedCount,
                               total: form5Denominator,
-                              subtitle: 'Out of $form5Denominator profiles',
                               color: const Color(0xFFEF4444),
                             ),
                           ),
@@ -765,6 +786,22 @@ class _DashboardViewState extends State<DashboardView> {
                                   color: Color(0xFF1E293B),
                                 ),
                               ),
+                              if (_activeFormFilter != null)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8),
+                                  child: Text(
+                                    _showUnfilledOnly
+                                        ? 'Remaining profiles'
+                                        : 'Filled profiles',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: _showUnfilledOnly
+                                          ? const Color(0xFFF97316)
+                                          : const Color(0xFF10B981),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
@@ -862,8 +899,8 @@ class _DashboardViewState extends State<DashboardView> {
                                             const SizedBox(width: 6),
                                             Text(
                                               _showUnfilledOnly
-                                                  ? 'Unfilled'
-                                                  : 'Filled',
+                                                  ? 'Show Filled ($activeFormCompleted)'
+                                                  : 'Show Remaining (${activeFormTotal - activeFormCompleted})',
                                               style: TextStyle(
                                                 fontSize: 13,
                                                 color: _showUnfilledOnly
@@ -1036,18 +1073,72 @@ class _DashboardViewState extends State<DashboardView> {
     );
   }
 
+  Widget _buildReportCard(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const ReportView()),
+        ),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0F766E),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0F766E).withValues(alpha: 0.25),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 8),
+                  Text(
+                    'Final Reports',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'View and Export Reports',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+              Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // Interactive Cascading Card Widget
   Widget _buildInteractiveCascadingCard({
     required int stageNumber,
     required String title,
     required int completed,
     required int total,
-    required String subtitle,
+
     required Color color,
   }) {
     final double ratio = total > 0 ? (completed / total).clamp(0.0, 1.0) : 0.0;
     final int percentage = (ratio * 100).toInt();
     final bool isSelected = _activeFormFilter == stageNumber;
+    final int balance = total - completed;
 
     return Material(
       color: Colors.transparent,
@@ -1125,7 +1216,7 @@ class _DashboardViewState extends State<DashboardView> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      subtitle,
+                      "$balance profiles remaining",
                       style: TextStyle(
                         color: Colors.grey.shade600,
                         fontSize: 11,

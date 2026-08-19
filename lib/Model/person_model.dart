@@ -31,6 +31,7 @@ class PersonModel {
   final double inverterAmount;
   final double lithiumBatteryAmount;
   final double structureAmount;
+  final double labourPrice;
   final double ownContribution;
   final double qarzanHasana;
   final double totalContribution;
@@ -63,6 +64,7 @@ class PersonModel {
     this.inverterAmount = 0,
     this.lithiumBatteryAmount = 0,
     this.structureAmount = 0,
+    this.labourPrice = 0,
     this.ownContribution = 0,
     this.qarzanHasana = 0,
     this.totalContribution = 0,
@@ -101,6 +103,7 @@ class PersonModel {
     double? inverterAmount,
     double? lithiumBatteryAmount,
     double? structureAmount,
+    double? labourPrice,
     double? ownContribution,
     double? qarzanHasana,
     double? totalContribution,
@@ -131,6 +134,7 @@ class PersonModel {
       inverterAmount: inverterAmount ?? this.inverterAmount,
       lithiumBatteryAmount: lithiumBatteryAmount ?? this.lithiumBatteryAmount,
       structureAmount: structureAmount ?? this.structureAmount,
+      labourPrice: labourPrice ?? this.labourPrice,
       ownContribution: ownContribution ?? this.ownContribution,
       qarzanHasana: qarzanHasana ?? this.qarzanHasana,
       totalContribution: totalContribution ?? this.totalContribution,
@@ -209,6 +213,7 @@ class PersonModel {
         defaultValue: 0.0,
       ),
       structureAmount: parseDouble(data['structureAmount'], defaultValue: 0.0),
+      labourPrice: parseDouble(data['labourPrice'], defaultValue: 0.0),
       ownContribution: parseDouble(data['ownContribution'], defaultValue: 0.0),
       qarzanHasana: parseDouble(data['qarzanHasana'], defaultValue: 0.0),
       totalContribution: parseDouble(
@@ -243,6 +248,7 @@ class PersonModel {
       'inverterAmount': inverterAmount,
       'lithiumBatteryAmount': lithiumBatteryAmount,
       'structureAmount': structureAmount,
+      'labourPrice': labourPrice,
       'ownContribution': ownContribution,
       'qarzanHasana': qarzanHasana,
       'totalContribution': totalContribution,

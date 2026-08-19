@@ -38,6 +38,7 @@ class Form5Mapper implements BaseFormMapper {
       'inverterAmount': _parseMoney(ans['inverterAmount']),
       'lithiumBatteryAmount': _parseMoney(ans['lithiumBatteryAmount']),
       'structureAmount': _parseMoney(ans['structureAmount']),
+      'labourPrice': _parseMoney(ans['labourPrice']),
       'ownContribution': _parseMoney(ans['ownContribution']),
       'qarzanHasana': _parseMoney(ans['qarzanHasana']),
       'totalContribution': _parseMoney(ans['totalContribution']),

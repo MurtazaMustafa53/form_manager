@@ -145,6 +145,13 @@ class AppProvider extends ChangeNotifier {
     return await _firebaseController.getSubmittedForm(personId, formNumber);
   }
 
+  Future<void> exportReportOneToExcel(List<List<dynamic>> rows) async {
+    if (!isDev && !isFinance) {
+      throw Exception('Unauthorized: only Dev and Finance can export reports.');
+    }
+    await ExcelService.exportReportOne(rows);
+  }
+
   /// Submit Form to Firebase and clear the local draft cache
   Future<void> submitFormToFirebase(FormDataModel formData) async {
     // Allow admin/dev to submit any form. Allow finance role to submit only the finance form.

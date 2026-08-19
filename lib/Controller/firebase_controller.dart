@@ -103,6 +103,7 @@ class FirebaseController {
       'inverterAmount': 0.0,
       'lithiumBatteryAmount': 0.0,
       'structureAmount': 0.0,
+      'labourPrice': 0.0,
       'ownContribution': 0.0,
       'qarzanHasana': 0.0,
       'totalContribution': 0.0,

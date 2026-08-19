@@ -587,6 +587,29 @@ class ExcelService {
     );
   }
 
+  static Future<void> exportReportOne(List<List<dynamic>> rows) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Report One'];
+    sheet.appendRow(
+      _toCellRow([
+        'Name',
+        'ITS Number',
+        'SF Number',
+        'Contact',
+        'Expectation (Form 2)',
+        'Expectation (Form 4)',
+        'Final Expectation',
+      ]),
+    );
+    for (final row in rows) {
+      sheet.appendRow(_toCellRow(row));
+    }
+    await _saveExcelFile(
+      excel,
+      'Report_One_${DateTime.now().millisecondsSinceEpoch}.xlsx',
+    );
+  }
+
   static dynamic _normalizeExportValue(dynamic value) {
     if (value == null) return '';
     if (value is Map || value is List) {
@@ -745,6 +768,7 @@ class ExcelService {
         'Structure Type',
         'Structure (Qty)',
         'Structure Amount',
+        'Labour Price',
         'Own Contribution',
         'Qarzan Hasana',
         'Total Contribution',
@@ -767,6 +791,7 @@ class ExcelService {
           person.structure,
           person.structureQuantity,
           person.structureAmount,
+          person.labourPrice,
           person.ownContribution,
           person.qarzanHasana,
           person.totalContribution,

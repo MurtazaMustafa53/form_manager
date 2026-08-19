@@ -28,6 +28,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
   final _inverterAmountController = TextEditingController(text: '0');
   final _lithiumBatteryAmountController = TextEditingController(text: '0');
   final _structureAmountController = TextEditingController(text: '0');
+  final _labourPriceController = TextEditingController(text: '0');
   final _ownContributionController = TextEditingController(text: '0');
   final _qarzanHasanaController = TextEditingController(text: '0');
   final _totalContributionController = TextEditingController(text: '0');
@@ -111,6 +112,8 @@ class _FormFinanceViewState extends State<FormFinanceView> {
           (financeAnswers['lithiumBatteryAmount'] ?? 0).toString();
       _structureAmountController.text = (financeAnswers['structureAmount'] ?? 0)
           .toString();
+      _labourPriceController.text = (financeAnswers['labourPrice'] ?? 0)
+          .toString();
       _ownContributionController.text = (financeAnswers['ownContribution'] ?? 0)
           .toString();
       _qarzanHasanaController.text = (financeAnswers['qarzanHasana'] ?? 0)
@@ -141,6 +144,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     _inverterAmountController.dispose();
     _lithiumBatteryAmountController.dispose();
     _structureAmountController.dispose();
+    _labourPriceController.dispose();
     _ownContributionController.dispose();
     _qarzanHasanaController.dispose();
     _totalContributionController.dispose();
@@ -178,7 +182,8 @@ class _FormFinanceViewState extends State<FormFinanceView> {
         _rowTotalFromQtyAndAmount(
           _structureQuantityController.text,
           _structureAmountController.text,
-        );
+        ) +
+        _parseMoneyInput(_labourPriceController.text);
   }
 
   double _getMaterialsTotal() {
@@ -233,6 +238,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
         _lithiumBatteryAmountController.text,
       ),
       'structureAmount': _parseMoneyInput(_structureAmountController.text),
+      'labourPrice': _parseMoneyInput(_labourPriceController.text),
       'ownContribution': _parseMoneyInput(_ownContributionController.text),
       'qarzanHasana': _parseMoneyInput(_qarzanHasanaController.text),
       'totalContribution': _parseMoneyInput(_totalContributionController.text),
@@ -296,6 +302,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
         _lithiumBatteryAmountController.text,
       ),
       'structureAmount': _parseMoneyInput(_structureAmountController.text),
+      'labourPrice': _parseMoneyInput(_labourPriceController.text),
       'ownContribution': _parseMoneyInput(_ownContributionController.text),
       'qarzanHasana': _parseMoneyInput(_qarzanHasanaController.text),
       'totalContribution': _parseMoneyInput(_totalContributionController.text),
@@ -861,6 +868,42 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                           child: Center(
                             child: Text(
                               "Rs. ${_rowTotalFromQtyAndAmount(_structureQuantityController.text, _structureAmountController.text).toInt().toString()}",
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 10,
+                      horizontal: 6,
+                    ),
+                    child: Row(
+                      children: [
+                        const Expanded(flex: 4, child: Text('Labour')),
+                        const Expanded(flex: 2, child: Text('-')),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 40,
+                            child: TextFormField(
+                              controller: _labourPriceController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                labelText: 'Price',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                              ),
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Center(
+                            child: Text(
+                              'Rs. ${_parseMoneyInput(_labourPriceController.text).toInt()}',
                             ),
                           ),
                         ),
