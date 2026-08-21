@@ -7,6 +7,7 @@ import 'package:form_manager/Views/Forms/form2_view.dart';
 import 'package:form_manager/Views/Forms/form3_view.dart';
 import 'package:form_manager/Views/Forms/form4_veiw.dart';
 import 'package:form_manager/Views/Forms/form_finance_view.dart';
+import 'package:form_manager/Views/Forms/form6_solar_extension_view.dart';
 
 class ProfileDetailView extends StatelessWidget {
   final PersonModel person;
@@ -18,6 +19,16 @@ class ProfileDetailView extends StatelessWidget {
     int formNumber, {
     bool readOnly = false,
   }) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    if (formNumber == 4 && !(provider.isDev || provider.isFinance)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Form 4 is available to Dev and Finance only.'),
+        ),
+      );
+      return;
+    }
+
     Widget targetForm;
 
     switch (formNumber) {
@@ -32,6 +43,9 @@ class ProfileDetailView extends StatelessWidget {
         break;
       case 5:
         targetForm = FormFinanceView(person: person);
+        break;
+      case 6:
+        targetForm = SolarExtensionFormView(person: person, readOnly: readOnly);
         break;
       case 3:
       default:
@@ -49,7 +63,10 @@ class ProfileDetailView extends StatelessWidget {
       (p) => p.id == person.id,
       orElse: () => person,
     );
-    final int completedCount = currentPerson.completedFormCount.clamp(0, 5);
+    final int completedCount = currentPerson.completedFormCount.clamp(
+      0,
+      currentPerson.requiredFormCount,
+    );
     final double progressRatio = currentPerson.progressPercentage;
     final int percentage = (progressRatio * 100).toInt();
 
@@ -175,7 +192,7 @@ class ProfileDetailView extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '$completedCount of 5',
+                              '$completedCount of ${currentPerson.requiredFormCount}',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -289,7 +306,7 @@ class ProfileDetailView extends StatelessWidget {
                       context,
                       formNumber: 1,
                       formTitle: 'Form 1: Personal Profile Details',
-                      isCompleted: currentPerson.completedFormCount >= 1,
+                      isCompleted: currentPerson.isFormCompleted(1),
                     ),
                     const Divider(height: 24),
                     _buildFormChecklistItem(
@@ -297,29 +314,40 @@ class ProfileDetailView extends StatelessWidget {
                       formNumber: 2,
                       formTitle:
                           'Form 2: Electrical Appliances & Financial Expectations',
-                      isCompleted: currentPerson.completedFormCount >= 2,
+                      isCompleted: currentPerson.isFormCompleted(2),
                     ),
                     const Divider(height: 24),
                     _buildFormChecklistItem(
                       context,
                       formNumber: 3,
-                      formTitle: 'Form 3: Solar Technical Audit',
-                      isCompleted: currentPerson.completedFormCount >= 3,
+                      formTitle: 'Form 3: Physical & Electrical Survey',
+                      isCompleted: currentPerson.isFormCompleted(3),
+                      isLocked: currentPerson.hasExistingSolarSystem,
                     ),
                     const Divider(height: 24),
                     _buildFormChecklistItem(
                       context,
                       formNumber: 4,
                       formTitle: 'Form 4: Financial Survey',
-                      isCompleted: currentPerson.completedFormCount >= 4,
+                      isCompleted: currentPerson.isFormCompleted(4),
+                      isLocked: currentPerson.hasExistingSolarSystem,
                     ),
                     const Divider(height: 24),
                     _buildFormChecklistItem(
                       context,
                       formNumber: 5,
                       formTitle: 'Finance: Financial Summary',
-                      isCompleted: currentPerson.completedFormCount >= 5,
+                      isCompleted: currentPerson.isFormCompleted(5),
                     ),
+                    if (currentPerson.hasExistingSolarSystem) ...[
+                      const Divider(height: 24),
+                      _buildFormChecklistItem(
+                        context,
+                        formNumber: 6,
+                        formTitle: 'Solar Extension Request Form',
+                        isCompleted: currentPerson.isFormCompleted(6),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -335,7 +363,13 @@ class ProfileDetailView extends StatelessWidget {
     required int formNumber,
     required String formTitle,
     required bool isCompleted,
+    bool isLocked = false,
   }) {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final canEdit =
+        !provider.isViewer &&
+        !isLocked &&
+        (formNumber != 4 || provider.isDev || provider.isFinance);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -368,7 +402,11 @@ class ProfileDetailView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                isCompleted ? 'Completed' : 'Not Started',
+                isLocked
+                    ? 'Not Required'
+                    : isCompleted
+                    ? 'Completed'
+                    : 'Not Started',
                 style: TextStyle(
                   color: isCompleted
                       ? const Color(0xFF166534)
@@ -392,8 +430,9 @@ class ProfileDetailView extends StatelessWidget {
                 ),
               ),
               icon: const Icon(Icons.remove_red_eye, size: 16),
-              onPressed: () =>
-                  _navigateToForm(context, formNumber, readOnly: true),
+              onPressed: isLocked
+                  ? null
+                  : () => _navigateToForm(context, formNumber, readOnly: true),
             ),
             const SizedBox(width: 12),
             ElevatedButton.icon(
@@ -418,10 +457,9 @@ class ProfileDetailView extends StatelessWidget {
                 isCompleted ? Icons.edit : Icons.arrow_forward,
                 size: 16,
               ),
-              onPressed:
-                  Provider.of<AppProvider>(context, listen: false).isViewer
-                  ? null
-                  : () => _navigateToForm(context, formNumber),
+              onPressed: canEdit
+                  ? () => _navigateToForm(context, formNumber)
+                  : null,
             ),
           ],
         ),

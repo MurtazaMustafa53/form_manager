@@ -50,19 +50,19 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
               .toList();
 
           final form1People = people
-              .where((p) => p.completedFormCount >= 1)
+              .where((p) => p.isFormCompleted(1))
               .toList();
           final form2People = people
-              .where((p) => p.completedFormCount >= 2)
+              .where((p) => p.isFormCompleted(2))
               .toList();
           final form3People = people
-              .where((p) => p.completedFormCount >= 3)
+              .where((p) => p.isFormCompleted(3))
               .toList();
           final form4People = people
-              .where((p) => p.completedFormCount >= 4)
+              .where((p) => p.isFormCompleted(4))
               .toList();
           final form5People = people
-              .where((p) => p.completedFormCount >= 5)
+              .where((p) => p.isFormCompleted(5))
               .toList();
 
           final form1Denominator = people.length;
@@ -345,7 +345,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   // FORM 1 SUMMARY
   // ---------------------------------------------------------------------------
   Widget _buildForm1Summary(List<PersonModel> people) {
-    final form1People = people.where((p) => p.completedFormCount >= 1).toList();
+    final form1People = people.where((p) => p.isFormCompleted(1)).toList();
     final int total = form1People.length;
 
     final int willingCount = form1People
@@ -515,7 +515,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   // FORM 2 SUMMARY
   // ---------------------------------------------------------------------------
   Widget _buildForm2Summary(List<PersonModel> people) {
-    final form2People = people.where((p) => p.completedFormCount >= 2).toList();
+    final form2People = people.where((p) => p.isFormCompleted(2)).toList();
 
     double grandTotalWattage = 0;
     final Map<String, int> financeCounts = {};
@@ -751,7 +751,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   // FORM 4 SUMMARY
   // ---------------------------------------------------------------------------
   Widget _buildForm4Summary(List<PersonModel> people) {
-    final form4People = people.where((p) => p.completedFormCount >= 4).toList();
+    final form4People = people.where((p) => p.isFormCompleted(4)).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -866,7 +866,7 @@ class _SummaryDashboardViewState extends State<SummaryDashboardView> {
   // FORM 5 SUMMARY
   // ---------------------------------------------------------------------------
   Widget _buildForm5Summary(List<PersonModel> people) {
-    final form5People = people.where((p) => p.completedFormCount >= 5).toList();
+    final form5People = people.where((p) => p.isFormCompleted(5)).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

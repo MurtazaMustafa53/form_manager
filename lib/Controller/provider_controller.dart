@@ -125,7 +125,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> saveDraft(FormDataModel formData) async {
     // Allow admin/dev to save drafts for any form.
     // Allow finance role to save drafts only for the finance form (formNumber 5).
-    if (!(isAdmin || isDev || (isFinance && formData.formNumber == 5))) {
+    if (!(isAdmin || isDev || isFinance)) {
       throw Exception('Unauthorized: insufficient permissions to save draft.');
     }
     await LocalStorageController.saveFormDraft(formData);
@@ -145,6 +145,10 @@ class AppProvider extends ChangeNotifier {
     return await _firebaseController.getSubmittedForm(personId, formNumber);
   }
 
+  Future<List<FormDataModel>> getSubmittedForms() async {
+    return await _firebaseController.getSubmittedForms();
+  }
+
   Future<void> exportReportOneToExcel(List<List<dynamic>> rows) async {
     if (!isDev && !isFinance) {
       throw Exception('Unauthorized: only Dev and Finance can export reports.');
@@ -155,7 +159,7 @@ class AppProvider extends ChangeNotifier {
   /// Submit Form to Firebase and clear the local draft cache
   Future<void> submitFormToFirebase(FormDataModel formData) async {
     // Allow admin/dev to submit any form. Allow finance role to submit only the finance form.
-    if (!(isAdmin || isDev || (isFinance && formData.formNumber == 5))) {
+    if (!(isAdmin || isDev || isFinance)) {
       throw Exception('Unauthorized: insufficient permissions to submit form.');
     }
     await _firebaseController.submitForm(formData);
@@ -169,7 +173,7 @@ class AppProvider extends ChangeNotifier {
   /// Delete a submitted form from Firebase (Dev, Admin, Finance allowed)
   Future<void> deleteSubmittedForm(String personId, int formNumber) async {
     // Allow admin/dev to delete any form. Allow finance role to delete only the finance form.
-    if (!(isAdmin || isDev || (isFinance && formNumber == 5))) {
+    if (!(isAdmin || isDev || isFinance)) {
       throw Exception('Unauthorized: insufficient permissions to delete form.');
     }
     await _firebaseController.deleteForm(personId, formNumber);

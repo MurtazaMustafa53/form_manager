@@ -49,6 +49,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
   bool _isSavingDraft = false;
   bool _isSubmitting = false;
   bool _isDeleting = false;
+  final _financeAccountController = TextEditingController();
 
   final _numberOfSolarPanelsController = TextEditingController(text: '2');
   final _numberOfInverterController = TextEditingController(text: '1');
@@ -124,6 +125,8 @@ class _FormFinanceViewState extends State<FormFinanceView> {
           .toString();
 
       final financeAnswers = financeSaved?.answers ?? {};
+      _financeAccountController.text = (financeAnswers['financeAccount'] ?? '')
+          .toString();
       _numberOfSolarPanelsController.text =
           (financeAnswers['numberOfSolarPanels'] ?? 2).toString();
       _numberOfInverterController.text =
@@ -179,6 +182,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
 
   @override
   void dispose() {
+    _financeAccountController.dispose();
     _numberOfSolarPanelsController.dispose();
     _numberOfInverterController.dispose();
     _lithiumBatteryController.dispose();
@@ -262,6 +266,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     }
 
     final answers = {
+      'financeAccount': _financeAccountController.text.trim(),
       'landlordApproval': _landlordApproval,
       'solarWillingness': _solarWillingness,
       'financeByMumin': _financeByMumin,
@@ -326,6 +331,7 @@ class _FormFinanceViewState extends State<FormFinanceView> {
     }
 
     final answers = {
+      'financeAccount': _financeAccountController.text.trim(),
       'landlordApproval': _landlordApproval,
       'solarWillingness': _solarWillingness,
       'financeByMumin': _financeByMumin,
@@ -501,6 +507,17 @@ class _FormFinanceViewState extends State<FormFinanceView> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: 260,
+                              child: TextFormField(
+                                controller: _financeAccountController,
+                                decoration: const InputDecoration(
+                                  labelText: 'Finance Account',
+                                  border: OutlineInputBorder(),
+                                ),
                               ),
                             ),
                             const SizedBox(height: 8),

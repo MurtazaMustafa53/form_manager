@@ -115,7 +115,8 @@ class _Form4ViewState extends State<Form4View> {
     super.initState();
     _isReadOnly =
         widget.readOnly ||
-        Provider.of<AppProvider>(context, listen: false).isViewer;
+        (!Provider.of<AppProvider>(context, listen: false).isDev &&
+            !Provider.of<AppProvider>(context, listen: false).isFinance);
     _ownAmountController.addListener(_syncTotalMuminContribution);
     _qarzanAmountController.addListener(_syncTotalMuminContribution);
     _loadInitialData();
@@ -400,6 +401,15 @@ class _Form4ViewState extends State<Form4View> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = Provider.of<AppProvider>(context);
+    if (!provider.isDev && !provider.isFinance) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Form 4')),
+        body: const Center(
+          child: Text('Form 4 is available to Dev and Finance accounts only.'),
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(

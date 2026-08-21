@@ -24,6 +24,7 @@ class _Form1ViewState extends State<Form1View> {
   late TextEditingController _sfNoController;
   late TextEditingController _contactController;
   late TextEditingController _addressController;
+  late TextEditingController _buildingNameController;
   late TextEditingController _familyMembersController;
   late TextEditingController _landlordNameController;
   late TextEditingController _landlordContactController;
@@ -64,6 +65,9 @@ class _Form1ViewState extends State<Form1View> {
     _addressController = TextEditingController(
       text: widget.person.address ?? '',
     );
+    _buildingNameController = TextEditingController(
+      text: widget.person.buildingName,
+    );
     _familyMembersController = TextEditingController();
     _landlordNameController = TextEditingController();
     _landlordContactController = TextEditingController();
@@ -91,6 +95,7 @@ class _Form1ViewState extends State<Form1View> {
         _sfNoController.text = (ans['sfNo'] ?? '').toString();
         _contactController.text = (ans['contact'] ?? '').toString();
         _addressController.text = (ans['address'] ?? '').toString();
+        _buildingNameController.text = (ans['buildingName'] ?? '').toString();
         _familyMembersController.text = (ans['noOfPersons'] ?? '').toString();
         _landlordNameController.text = (ans['landlordName'] ?? '').toString();
         _landlordContactController.text = (ans['landlordContact'] ?? '')
@@ -120,6 +125,7 @@ class _Form1ViewState extends State<Form1View> {
     _sfNoController.dispose();
     _contactController.dispose();
     _addressController.dispose();
+    _buildingNameController.dispose();
     _familyMembersController.dispose();
     _landlordNameController.dispose();
     _landlordContactController.dispose();
@@ -199,13 +205,14 @@ class _Form1ViewState extends State<Form1View> {
 
   double _calculateCompletionRatio() {
     int filledFields = 0;
-    const int totalTrackedFields = 9;
+    const int totalTrackedFields = 10;
 
     if (_sfNoController.text.trim().isNotEmpty) filledFields++;
     if (_itsController.text.trim().isNotEmpty) filledFields++;
     if (_nameController.text.trim().isNotEmpty) filledFields++;
     if (_contactController.text.trim().isNotEmpty) filledFields++;
     if (_addressController.text.trim().isNotEmpty) filledFields++;
+    if (_buildingNameController.text.trim().isNotEmpty) filledFields++;
     if (_familyMembersController.text.trim().isNotEmpty) filledFields++;
     if (_selectedHouseType != null) filledFields++;
     if (_selectedTotalRooms != null) filledFields++;
@@ -222,6 +229,7 @@ class _Form1ViewState extends State<Form1View> {
       'sfNo': _sfNoController.text.trim(),
       'contact': _contactController.text.trim(),
       'address': _addressController.text.trim(),
+      'buildingName': _buildingNameController.text.trim(),
       'houseType': _selectedHouseType ?? '',
       'rooms': _selectedTotalRooms ?? '',
       'noOfPersons': _familyMembersController.text.trim(),
@@ -438,6 +446,7 @@ class _Form1ViewState extends State<Form1View> {
                     _addressController,
                     'Complete Address (Flat, Floor, Building, Area) *',
                   ),
+                  _buildTextField(_buildingNameController, 'Building Name *'),
                   _buildDropdownField(
                     _selectedHouseType,
                     'House Type *',

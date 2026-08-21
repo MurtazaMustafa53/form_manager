@@ -4,6 +4,7 @@ import 'package:form_manager/Model/Form%20Mappers/form2_mapper.dart';
 import 'package:form_manager/Model/Form%20Mappers/form3_mapper.dart';
 import 'package:form_manager/Model/Form%20Mappers/form5_mapper.dart';
 import 'package:form_manager/Model/Form%20Mappers/form4_mapper.dart';
+import 'package:form_manager/Model/Form%20Mappers/form6_mapper.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 
 class FormMapperRegistry {
@@ -13,6 +14,7 @@ class FormMapperRegistry {
     3: Form3Mapper(),
     4: Form4Mapper(),
     5: Form5Mapper(),
+    6: Form6Mapper(),
   };
 
   static Map<String, dynamic> getPersonUpdates(FormDataModel formData) {
@@ -38,7 +40,24 @@ class FormMapperRegistry {
       }
     }
 
-    merged['completedFormCount'] = validForms.length;
+    final hasExistingSolar = validForms.any(
+      (form) =>
+          form.formNumber == 1 &&
+          (form.answers['solarWillingness'] ?? '').toString().toLowerCase() ==
+              'already installed',
+    );
+    final requiredForms = hasExistingSolar ? {1, 2, 5, 6} : {1, 2, 3, 4, 5};
+    merged['completedFormCount'] = validForms
+        .map((form) => form.formNumber)
+        .where(requiredForms.contains)
+        .toSet()
+        .length;
+    merged['submittedFormNumbers'] = validForms
+        .map((form) => form.formNumber)
+        .where(requiredForms.contains)
+        .toSet()
+        .toList();
+    merged['hasExistingSolarSystem'] = hasExistingSolar;
     return merged;
   }
 }

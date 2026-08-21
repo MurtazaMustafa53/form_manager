@@ -13,6 +13,7 @@ class Form1Mapper implements BaseFormMapper {
       'fieldCompletionRatio': ans['completionRatio'] ?? 1.0,
       'name': (ans['name'] ?? '').toString().trim(),
       'contact': (ans['contact'] ?? '').toString().trim(),
+      'buildingName': (ans['buildingName'] ?? '').toString().trim(),
       'address': (ans['address'] ?? '').toString().trim(),
       'houseType': (ans['houseType'] ?? '').toString().trim(),
       'landlordNameAndContact': (ans['landlordName'] ?? '').toString().trim(),
@@ -20,6 +21,9 @@ class Form1Mapper implements BaseFormMapper {
       'rooms': (ans['rooms'] ?? '').toString().trim(),
       'willingToSolar': ans['solarWillingness'] == 'Yes',
       'landlordApproval': ans['landlordApproval'] == 'Yes',
+      'hasExistingSolarSystem':
+          (ans['solarWillingness'] ?? '').toString().toLowerCase() ==
+          'already installed',
       'solarWillingness': (ans['solarWillingness'] ?? '').toString().trim(),
     };
   }

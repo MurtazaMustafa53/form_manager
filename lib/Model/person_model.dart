@@ -6,6 +6,7 @@ class PersonModel {
   final int its;
   final int? sfNo;
   final String contact;
+  final String buildingName;
 
   // Form 1 Fields
   final String? address;
@@ -38,6 +39,7 @@ class PersonModel {
 
   // Completion Tracking
   final int completedFormCount;
+  final List<int> submittedFormNumbers;
 
   static const int totalForms = 5;
 
@@ -47,6 +49,7 @@ class PersonModel {
     required this.its,
     this.sfNo,
     required this.contact,
+    this.buildingName = '',
     this.address = '',
     this.willingToSolar = false,
     this.landlordApproval = false,
@@ -69,12 +72,19 @@ class PersonModel {
     this.qarzanHasana = 0,
     this.totalContribution = 0,
     this.completedFormCount = 0,
+    this.submittedFormNumbers = const [],
   });
 
-  bool get isComplete => completedFormCount >= totalForms;
+  bool get isComplete => completedFormCount >= requiredFormCount;
 
   double get progressPercentage =>
-      (completedFormCount / totalForms).clamp(0.0, 1.0);
+      (completedFormCount / requiredFormCount).clamp(0.0, 1.0);
+
+  int get requiredFormCount => hasExistingSolarSystem ? 4 : totalForms;
+
+  bool isFormCompleted(int formNumber) => submittedFormNumbers.isNotEmpty
+      ? submittedFormNumbers.contains(formNumber)
+      : completedFormCount >= formNumber;
 
   // Conditional Logic Getters
   bool get showSolarFields => hasExistingSolarSystem || willingToSolar;
@@ -86,6 +96,7 @@ class PersonModel {
     int? its,
     int? sfNo,
     String? contact,
+    String? buildingName,
     String? address,
     bool? willingToSolar,
     bool? landlordApproval,
@@ -108,6 +119,7 @@ class PersonModel {
     double? qarzanHasana,
     double? totalContribution,
     int? completedFormCount,
+    List<int>? submittedFormNumbers,
   }) {
     return PersonModel(
       id: id ?? this.id,
@@ -115,6 +127,7 @@ class PersonModel {
       its: its ?? this.its,
       sfNo: sfNo ?? this.sfNo,
       contact: contact ?? this.contact,
+      buildingName: buildingName ?? this.buildingName,
       address: address ?? this.address,
       willingToSolar: willingToSolar ?? this.willingToSolar,
       landlordApproval: landlordApproval ?? this.landlordApproval,
@@ -139,6 +152,7 @@ class PersonModel {
       qarzanHasana: qarzanHasana ?? this.qarzanHasana,
       totalContribution: totalContribution ?? this.totalContribution,
       completedFormCount: completedFormCount ?? this.completedFormCount,
+      submittedFormNumbers: submittedFormNumbers ?? this.submittedFormNumbers,
     );
   }
 
@@ -181,6 +195,7 @@ class PersonModel {
       its: parseInt(data['its']),
       sfNo: parseNullableInt(data['sfNo']),
       contact: data['contact']?.toString() ?? '',
+      buildingName: data['buildingName']?.toString() ?? '',
       address: data['address']?.toString() ?? '',
       willingToSolar: parseBool(data['willingToSolar']),
       landlordApproval: parseBool(data['landlordApproval']),
@@ -221,6 +236,10 @@ class PersonModel {
         defaultValue: 0.0,
       ),
       completedFormCount: parseInt(data['completedFormCount']),
+      submittedFormNumbers:
+          (data['submittedFormNumbers'] as List<dynamic>? ?? [])
+              .map(parseInt)
+              .toList(),
     );
   }
 
@@ -231,6 +250,7 @@ class PersonModel {
       'its': its,
       'sfNo': sfNo,
       'contact': contact,
+      'buildingName': buildingName,
       'address': address,
       'willingToSolar': willingToSolar,
       'landlordApproval': landlordApproval,
@@ -253,6 +273,7 @@ class PersonModel {
       'qarzanHasana': qarzanHasana,
       'totalContribution': totalContribution,
       'completedFormCount': completedFormCount,
+      'submittedFormNumbers': submittedFormNumbers,
     };
   }
 }

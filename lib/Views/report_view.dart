@@ -44,19 +44,52 @@ class _ReportOneRow {
   ];
 }
 
+class _BuildingReadinessRow {
+  final String buildingName;
+  final int profileCount;
+  final int completedForms;
+  final int requiredForms;
+
+  const _BuildingReadinessRow({
+    required this.buildingName,
+    required this.profileCount,
+    required this.completedForms,
+    required this.requiredForms,
+  });
+
+  int get percentage =>
+      requiredForms == 0 ? 0 : ((completedForms / requiredForms) * 100).round();
+}
+
 class _ReportViewState extends State<ReportView> {
   final _searchController = TextEditingController();
   List<_ReportOneRow> _rows = [];
+  List<_BuildingReadinessRow> _readinessRows = [];
   bool _isLoading = true;
   String? _error;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
+  AppProvider? _provider;
+  bool _reloadScheduled = false;
+  bool _loadInProgress = false;
+  int _selectedReport = 1;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_refreshTable);
-    _loadReport();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = Provider.of<AppProvider>(context);
+    if (_provider != provider) {
+      _provider?.removeListener(_onProviderChanged);
+      _provider = provider;
+      provider.addListener(_onProviderChanged);
+      _scheduleReportLoad();
+    }
   }
 
   @override
@@ -64,12 +97,31 @@ class _ReportViewState extends State<ReportView> {
     _searchController
       ..removeListener(_refreshTable)
       ..dispose();
+    _provider?.removeListener(_onProviderChanged);
     super.dispose();
+  }
+
+  void _onProviderChanged() {
+    if (_provider?.isLoading == false && _provider?.isAuthLoading == false) {
+      _scheduleReportLoad();
+    }
+  }
+
+  void _scheduleReportLoad() {
+    if (_reloadScheduled || !mounted) return;
+    _reloadScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _reloadScheduled = false;
+      if (mounted) _loadReport();
+    });
   }
 
   Future<void> _loadReport() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
+    if (provider.isLoading || provider.isAuthLoading || _loadInProgress) return;
+    _loadInProgress = true;
     if (!provider.isDev && !provider.isFinance) {
+      _loadInProgress = false;
       setState(() {
         _isLoading = false;
         _error = 'Access denied. Reports are available to Finance accounts.';
@@ -78,29 +130,69 @@ class _ReportViewState extends State<ReportView> {
     }
 
     try {
-      final rows = await Future.wait(
-        provider.people.map((person) async {
-          final forms = await Future.wait<FormDataModel?>([
-            provider.getSubmittedForm(person.id, 2),
-            provider.getSubmittedForm(person.id, 4),
-          ]);
-          if (forms[0] == null) return null;
-          return _ReportOneRow(
-            name: person.name,
-            its: person.its.toString(),
-            sfNo: person.sfNo?.toString() ?? '',
-            contact: person.contact,
-            form2Expectation: (forms[0]?.answers['financeExpectation'] ?? 'No')
-                .toString(),
-            form4Expectation: (forms[1]?.answers['financeExpectation'] ?? 'No')
-                .toString(),
-          );
-        }),
-      );
+      final submittedForms = await provider.getSubmittedForms();
+      final formsByPerson = <String, Map<int, FormDataModel>>{};
+      for (final form in submittedForms) {
+        formsByPerson.putIfAbsent(form.personId, () => {})[form.formNumber] =
+            form;
+      }
+
+      final rows = provider.people.map((person) {
+        final forms = formsByPerson[person.id] ?? {};
+        final form2 = forms[2];
+        if (form2 == null) return null;
+        return _ReportOneRow(
+          name: person.name,
+          its: person.its.toString(),
+          sfNo: person.sfNo?.toString() ?? '',
+          contact: person.contact,
+          form2Expectation: (form2.answers['financeExpectation'] ?? 'No')
+              .toString(),
+          form4Expectation: (forms[4]?.answers['financeExpectation'] ?? 'No')
+              .toString(),
+        );
+      }).toList();
+
+      final grouped = <String, List<int>>{};
+      for (final person in provider.people) {
+        final forms = formsByPerson[person.id] ?? {};
+        final installed =
+            (forms[1]?.answers['solarWillingness'] ?? '')
+                .toString()
+                .toLowerCase() ==
+            'already installed';
+        final required = installed ? {1, 2, 5, 6} : {1, 2, 3, 4, 5};
+        final completed = forms.values
+            .map((form) => form.formNumber)
+            .where(required.contains)
+            .toSet()
+            .length;
+        final buildingName = person.buildingName.trim().isNotEmpty
+            ? person.buildingName.trim()
+            : (forms[1]?.answers['buildingName'] ?? '').toString().trim();
+        final key = buildingName.isEmpty ? 'Unnamed building' : buildingName;
+        final totals = grouped.putIfAbsent(key, () => [0, 0, 0]);
+        totals[0]++;
+        totals[1] += completed;
+        totals[2] += required.length;
+      }
+      final readinessRows =
+          grouped.entries
+              .map(
+                (entry) => _BuildingReadinessRow(
+                  buildingName: entry.key,
+                  profileCount: entry.value[0],
+                  completedForms: entry.value[1],
+                  requiredForms: entry.value[2],
+                ),
+              )
+              .toList()
+            ..sort((a, b) => a.buildingName.compareTo(b.buildingName));
 
       if (!mounted) return;
       setState(() {
         _rows = rows.whereType<_ReportOneRow>().toList();
+        _readinessRows = readinessRows;
         _isLoading = false;
       });
       _sortRows();
@@ -110,6 +202,8 @@ class _ReportViewState extends State<ReportView> {
         _isLoading = false;
         _error = 'Unable to load Report One: $error';
       });
+    } finally {
+      _loadInProgress = false;
     }
   }
 
@@ -206,64 +300,175 @@ class _ReportViewState extends State<ReportView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [_buildReportCard()],
-                  ),
+                  _buildReportCards(),
                   const SizedBox(height: 24),
-                  _buildExpectationChart(),
-                  const SizedBox(height: 24),
-                  _buildReportOneTable(),
+                  if (_selectedReport == 1) ...[
+                    _buildExpectationChart(),
+                    const SizedBox(height: 24),
+                    _buildReportOneTable(),
+                  ] else ...[
+                    _buildReadinessReport(),
+                  ],
                 ],
               ),
             ),
     );
   }
 
-  Widget _buildReportCard() {
-    return Container(
-      width: 360,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0F766E),
+  Widget _buildReportCards() {
+    final completedBuildings = _readinessRows
+        .where((row) => row.percentage >= 100)
+        .length;
+
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        _buildReportCard(
+          reportNumber: 1,
+          title: 'Report One',
+          subtitle: 'Expectation comparison',
+          count: _rows.length,
+          total: _provider?.people.length ?? 0,
+          color: const Color(0xFF2563EB),
+        ),
+        _buildReportCard(
+          reportNumber: 2,
+          title: 'Report Two',
+          subtitle: 'Building readiness',
+          count: completedBuildings,
+          total: _readinessRows.length,
+          color: const Color(0xFF0F766E),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReportCard({
+    required int reportNumber,
+    required String title,
+    required String subtitle,
+    required int count,
+    required int total,
+    required Color color,
+  }) {
+    final isSelected = _selectedReport == reportNumber;
+    final percentage = total > 0 ? (count / total * 100).round() : 0;
+    final pending = total - count;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F766E).withValues(alpha: 0.25),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+        onTap: () => setState(() => _selectedReport = reportNumber),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          width: 360,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade200,
+              width: isSelected ? 2 : 1,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
           ),
-        ],
-      ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Reports',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF1E293B),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Icon(
+                    isSelected
+                        ? Icons.check_circle
+                        : Icons.insert_chart_outlined,
+                    color: isSelected ? Colors.white : Colors.grey.shade400,
+                    size: 20,
+                  ),
+                ],
               ),
-              Icon(Icons.table_chart_outlined, color: Colors.white70),
+              const SizedBox(height: 6),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: isSelected ? Colors.white70 : Colors.grey.shade600,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$count',
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : color,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Completed out of $total',
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white
+                              : const Color(0xFF1E293B),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$pending pending',
+                        style: TextStyle(
+                          color: isSelected
+                              ? Colors.white70
+                              : Colors.grey.shade600,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    '$percentage%',
+                    style: TextStyle(
+                      color: isSelected ? Colors.white70 : Colors.grey.shade600,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ],
           ),
-          SizedBox(height: 12),
-          Text(
-            'Report One',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 6),
-          Text(
-            'Expectation comparison',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -345,6 +550,58 @@ class _ReportViewState extends State<ReportView> {
                       ],
                     ),
                 ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadinessReport() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Report Two: Building Readiness',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          const Text('Progress across all profiles assigned to each building.'),
+          const SizedBox(height: 16),
+          if (_readinessRows.isEmpty)
+            const Text('No building data available.')
+          else
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Building Name')),
+                  DataColumn(label: Text('Profiles')),
+                  DataColumn(label: Text('Completed Forms')),
+                  DataColumn(label: Text('Readiness')),
+                ],
+                rows: _readinessRows
+                    .map(
+                      (row) => DataRow(
+                        cells: [
+                          DataCell(Text(row.buildingName)),
+                          DataCell(Text(row.profileCount.toString())),
+                          DataCell(
+                            Text('${row.completedForms}/${row.requiredForms}'),
+                          ),
+                          DataCell(Text('${row.percentage}%')),
+                        ],
+                      ),
+                    )
+                    .toList(),
               ),
             ),
         ],

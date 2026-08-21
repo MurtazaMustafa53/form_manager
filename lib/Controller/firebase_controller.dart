@@ -30,14 +30,8 @@ class FirebaseController {
     final String docid = '${formData.personId}_form_${formData.formNumber}';
     await _formsRef.doc(docid).set(formData.toFirestorMap());
 
-    // 2. Map payload via Model layer registry
-    final Map<String, dynamic> personUpdates =
-        FormMapperRegistry.getPersonUpdates(formData);
-
-    // 3. Update summary fields on parent Person
-    if (personUpdates.isNotEmpty) {
-      await _peopleRef.doc(formData.personId).update(personUpdates);
-    }
+    // Rebuild the summary so out-of-order and conditional forms are counted correctly.
+    await _rebuildPersonSummary(formData.personId);
   }
 
   Future<FormDataModel?> getSubmittedForm(
@@ -86,6 +80,7 @@ class FirebaseController {
       'its': existingData['its'] ?? 0,
       'sfNo': existingData['sfNo'] ?? 0,
       'contact': existingData['contact'] ?? '',
+      'buildingName': existingData['buildingName'] ?? '',
       'address': '',
       'willingToSolar': false,
       'landlordApproval': false,
@@ -108,6 +103,7 @@ class FirebaseController {
       'qarzanHasana': 0.0,
       'totalContribution': 0.0,
       'completedFormCount': 0,
+      'submittedFormNumbers': <int>[],
     };
 
     final rebuiltSummary = <String, dynamic>{

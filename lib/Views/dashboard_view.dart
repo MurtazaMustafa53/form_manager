@@ -144,14 +144,14 @@ class _DashboardViewState extends State<DashboardView> {
           // Remaining profiles must have completed the previous form in the cascade.
           final hasCompletedPreviousForm =
               _activeFormFilter == 1 ||
-              person.completedFormCount >= _activeFormFilter! - 1;
+              person.isFormCompleted(_activeFormFilter! - 1);
           if (!hasCompletedPreviousForm ||
-              person.completedFormCount >= _activeFormFilter!) {
+              person.isFormCompleted(_activeFormFilter!)) {
             return false;
           }
         } else {
           // Show only profiles that HAVE filled this form
-          if (person.completedFormCount < _activeFormFilter!) {
+          if (!person.isFormCompleted(_activeFormFilter!)) {
             return false;
           }
         }
@@ -297,11 +297,14 @@ class _DashboardViewState extends State<DashboardView> {
           final people = provider.people;
           final totalProfiles = people.length;
 
-          final int totalRequiredForms = totalProfiles * PersonModel.totalForms;
+          final int totalRequiredForms = people.fold<int>(
+            0,
+            (sum, p) => sum + p.requiredFormCount,
+          );
           final int totalFormsSubmitted = people.fold<int>(
             0,
             (sum, p) =>
-                sum + p.completedFormCount.clamp(0, PersonModel.totalForms),
+                sum + p.completedFormCount.clamp(0, p.requiredFormCount),
           );
           final double overallProgress = totalRequiredForms > 0
               ? (totalFormsSubmitted / totalRequiredForms)
@@ -314,8 +317,7 @@ class _DashboardViewState extends State<DashboardView> {
 
           final formSubmissionCounts = List.generate(
             PersonModel.totalForms,
-            (index) =>
-                people.where((p) => p.completedFormCount >= index + 1).length,
+            (index) => people.where((p) => p.isFormCompleted(index + 1)).length,
           );
 
           final form1SubmittedCount = formSubmissionCounts[0];
