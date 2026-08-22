@@ -9,6 +9,8 @@ import 'package:form_manager/Model/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppProvider extends ChangeNotifier {
+  static const int temporaryFormNumber = 7;
+
   final FirebaseController _firebaseController = FirebaseController();
 
   List<PersonModel> _people = [];
@@ -27,6 +29,7 @@ class AppProvider extends ChangeNotifier {
   bool get isAdmin => _currentUser?.isAdmin ?? false;
   bool get isViewer => _currentUser?.isViewer ?? false;
   bool get isFinance => _currentUser?.isFinance ?? false;
+  bool get canAccessTemporaryForm => isDev || isFinance;
   bool get isLoggedIn => _currentUser != null;
 
   AppProvider() {
@@ -123,6 +126,11 @@ class AppProvider extends ChangeNotifier {
 
   /// Save draft locally via local storage controller
   Future<void> saveDraft(FormDataModel formData) async {
+    if (formData.formNumber == temporaryFormNumber && !canAccessTemporaryForm) {
+      throw Exception(
+        'Unauthorized: only Dev and Finance can save the temporary form.',
+      );
+    }
     // Allow admin/dev to save drafts for any form.
     // Allow finance role to save drafts only for the finance form (formNumber 5).
     if (!(isAdmin || isDev || isFinance)) {
@@ -158,6 +166,11 @@ class AppProvider extends ChangeNotifier {
 
   /// Submit Form to Firebase and clear the local draft cache
   Future<void> submitFormToFirebase(FormDataModel formData) async {
+    if (formData.formNumber == temporaryFormNumber && !canAccessTemporaryForm) {
+      throw Exception(
+        'Unauthorized: only Dev and Finance can submit the temporary form.',
+      );
+    }
     // Allow admin/dev to submit any form. Allow finance role to submit only the finance form.
     if (!(isAdmin || isDev || isFinance)) {
       throw Exception('Unauthorized: insufficient permissions to submit form.');
@@ -172,6 +185,11 @@ class AppProvider extends ChangeNotifier {
 
   /// Delete a submitted form from Firebase (Dev, Admin, Finance allowed)
   Future<void> deleteSubmittedForm(String personId, int formNumber) async {
+    if (formNumber == temporaryFormNumber && !canAccessTemporaryForm) {
+      throw Exception(
+        'Unauthorized: only Dev and Finance can delete the temporary form.',
+      );
+    }
     // Allow admin/dev to delete any form. Allow finance role to delete only the finance form.
     if (!(isAdmin || isDev || isFinance)) {
       throw Exception('Unauthorized: insufficient permissions to delete form.');

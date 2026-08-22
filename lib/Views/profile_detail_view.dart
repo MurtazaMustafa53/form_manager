@@ -8,6 +8,7 @@ import 'package:form_manager/Views/Forms/form3_view.dart';
 import 'package:form_manager/Views/Forms/form4_veiw.dart';
 import 'package:form_manager/Views/Forms/form_finance_view.dart';
 import 'package:form_manager/Views/Forms/form6_solar_extension_view.dart';
+import 'package:form_manager/Views/Forms/temporary_form_view.dart';
 
 class ProfileDetailView extends StatelessWidget {
   final PersonModel person;
@@ -20,6 +21,15 @@ class ProfileDetailView extends StatelessWidget {
     bool readOnly = false,
   }) {
     final provider = Provider.of<AppProvider>(context, listen: false);
+    if (formNumber == AppProvider.temporaryFormNumber &&
+        !provider.canAccessTemporaryForm) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This form is available to Dev and Finance only.'),
+        ),
+      );
+      return;
+    }
     if (formNumber == 4 && !(provider.isDev || provider.isFinance)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -46,6 +56,9 @@ class ProfileDetailView extends StatelessWidget {
         break;
       case 6:
         targetForm = SolarExtensionFormView(person: person, readOnly: readOnly);
+        break;
+      case AppProvider.temporaryFormNumber:
+        targetForm = TemporaryFormView(person: person, readOnly: readOnly);
         break;
       case 3:
       default:
@@ -348,6 +361,18 @@ class ProfileDetailView extends StatelessWidget {
                         isCompleted: currentPerson.isFormCompleted(6),
                       ),
                     ],
+                    if (provider.canAccessTemporaryForm) ...[
+                      const Divider(height: 24),
+                      _buildFormChecklistItem(
+                        context,
+                        formNumber: AppProvider.temporaryFormNumber,
+                        formTitle: 'Temporary Form: Building Name',
+                        isCompleted: currentPerson.isFormCompleted(
+                          AppProvider.temporaryFormNumber,
+                        ),
+                        roleRestricted: true,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -364,12 +389,14 @@ class ProfileDetailView extends StatelessWidget {
     required String formTitle,
     required bool isCompleted,
     bool isLocked = false,
+    bool roleRestricted = false,
   }) {
     final provider = Provider.of<AppProvider>(context, listen: false);
     final canEdit =
         !provider.isViewer &&
         !isLocked &&
-        (formNumber != 4 || provider.isDev || provider.isFinance);
+        (formNumber != 4 || provider.isDev || provider.isFinance) &&
+        (!roleRestricted || provider.canAccessTemporaryForm);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [

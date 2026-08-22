@@ -143,6 +143,27 @@ void main() {
       },
     );
 
+    test(
+      'temporary form updates building name without completion progress',
+      () {
+        final summary = FormMapperRegistry.buildSummaryFromSubmittedForms([
+          FormDataModel(
+            id: 'person_1_form_7',
+            personId: 'person_1',
+            formNumber: 7,
+            filledByStaffId: 'staff_1',
+            updatedAt: DateTime.now(),
+            answers: {'buildingName': 'North Building'},
+            isDraft: false,
+          ),
+        ]);
+
+        expect(summary['buildingName'], 'North Building');
+        expect(summary['completedFormCount'], 0);
+        expect(summary['submittedFormNumbers'], [7]);
+      },
+    );
+
     test('excel export expands nested answer fields into columns', () {
       final forms = [
         FormDataModel(

@@ -5,6 +5,7 @@ import 'package:form_manager/Model/Form%20Mappers/form3_mapper.dart';
 import 'package:form_manager/Model/Form%20Mappers/form5_mapper.dart';
 import 'package:form_manager/Model/Form%20Mappers/form4_mapper.dart';
 import 'package:form_manager/Model/Form%20Mappers/form6_mapper.dart';
+import 'package:form_manager/Model/Form%20Mappers/temporary_form_mapper.dart';
 import 'package:form_manager/Model/form_data_model.dart';
 
 class FormMapperRegistry {
@@ -15,6 +16,7 @@ class FormMapperRegistry {
     4: Form4Mapper(),
     5: Form5Mapper(),
     6: Form6Mapper(),
+    7: TemporaryFormMapper(),
   };
 
   static Map<String, dynamic> getPersonUpdates(FormDataModel formData) {
@@ -54,7 +56,6 @@ class FormMapperRegistry {
         .length;
     merged['submittedFormNumbers'] = validForms
         .map((form) => form.formNumber)
-        .where(requiredForms.contains)
         .toSet()
         .toList();
     merged['hasExistingSolarSystem'] = hasExistingSolar;
