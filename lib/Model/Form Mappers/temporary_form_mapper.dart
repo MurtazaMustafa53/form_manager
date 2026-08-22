@@ -11,6 +11,7 @@ class TemporaryFormMapper implements BaseFormMapper {
       'buildingName': (formData.answers['buildingName'] ?? '')
           .toString()
           .trim(),
+      'roofReady': (formData.answers['roofReady'] ?? '').toString().trim(),
     };
   }
 }

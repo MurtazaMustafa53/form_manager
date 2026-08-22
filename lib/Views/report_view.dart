@@ -47,23 +47,84 @@ class _ReportOneRow {
 class _BuildingReadinessRow {
   final String buildingName;
   final int profileCount;
-  final int completedForms;
-  final int requiredForms;
+  final int completedChecks;
+  final int totalChecks;
 
   const _BuildingReadinessRow({
     required this.buildingName,
     required this.profileCount,
-    required this.completedForms,
-    required this.requiredForms,
+    required this.completedChecks,
+    required this.totalChecks,
   });
 
   int get percentage =>
-      requiredForms == 0 ? 0 : ((completedForms / requiredForms) * 100).round();
+      totalChecks == 0 ? 0 : ((completedChecks / totalChecks) * 100).round();
+}
+
+class _ReportTwoRow {
+  final String buildingName;
+  final String name;
+  final String its;
+  final String sfNo;
+  final String willingToSolar;
+  final String landlordApproval;
+  final String form2Expectation;
+  final String form4Expectation;
+  final String roofReady;
+
+  const _ReportTwoRow({
+    required this.buildingName,
+    required this.name,
+    required this.its,
+    required this.sfNo,
+    required this.willingToSolar,
+    required this.landlordApproval,
+    required this.form2Expectation,
+    required this.form4Expectation,
+    required this.roofReady,
+  });
+
+  String get finalExpectation =>
+      _isYes(form2Expectation) || _isYes(form4Expectation) ? 'Yes' : 'No';
+
+  int get readinessCount => [
+    willingToSolar,
+    landlordApproval,
+    form2Expectation,
+    form4Expectation,
+    finalExpectation,
+    roofReady,
+  ].where((value) => value.trim().isNotEmpty).length;
+
+  int get readinessPercentage => ((readinessCount / 6) * 100).round();
+
+  static bool _isYes(String value) => value.trim().toLowerCase() == 'yes';
+}
+
+class _ReadinessLegend extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _ReadinessLegend({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(width: 10, height: 10, color: color),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
 }
 
 class _ReportViewState extends State<ReportView> {
   final _searchController = TextEditingController();
+  final _buildingSearchController = TextEditingController();
   List<_ReportOneRow> _rows = [];
+  List<_ReportTwoRow> _reportTwoRows = [];
   List<_BuildingReadinessRow> _readinessRows = [];
   bool _isLoading = true;
   String? _error;
@@ -73,11 +134,13 @@ class _ReportViewState extends State<ReportView> {
   bool _reloadScheduled = false;
   bool _loadInProgress = false;
   int _selectedReport = 1;
+  String? _selectedBuilding;
 
   @override
   void initState() {
     super.initState();
     _searchController.addListener(_refreshTable);
+    _buildingSearchController.addListener(_refreshTable);
   }
 
   @override
@@ -95,6 +158,9 @@ class _ReportViewState extends State<ReportView> {
   @override
   void dispose() {
     _searchController
+      ..removeListener(_refreshTable)
+      ..dispose();
+    _buildingSearchController
       ..removeListener(_refreshTable)
       ..dispose();
     _provider?.removeListener(_onProviderChanged);
@@ -153,28 +219,40 @@ class _ReportViewState extends State<ReportView> {
         );
       }).toList();
 
-      final grouped = <String, List<int>>{};
-      for (final person in provider.people) {
+      final reportTwoRows = provider.people.map((person) {
         final forms = formsByPerson[person.id] ?? {};
-        final installed =
-            (forms[1]?.answers['solarWillingness'] ?? '')
-                .toString()
-                .toLowerCase() ==
-            'already installed';
-        final required = installed ? {1, 2, 5, 6} : {1, 2, 3, 4, 5};
-        final completed = forms.values
-            .map((form) => form.formNumber)
-            .where(required.contains)
-            .toSet()
-            .length;
+        final form1 = forms[1];
+        final form2 = forms[2];
+        final form4 = forms[4];
+        final temporaryForm = forms[AppProvider.temporaryFormNumber];
         final buildingName = person.buildingName.trim().isNotEmpty
             ? person.buildingName.trim()
-            : (forms[1]?.answers['buildingName'] ?? '').toString().trim();
-        final key = buildingName.isEmpty ? 'Unnamed building' : buildingName;
+            : (form1?.answers['buildingName'] ?? '').toString().trim();
+        return _ReportTwoRow(
+          buildingName: buildingName.isEmpty
+              ? 'Unnamed building'
+              : buildingName,
+          name: person.name,
+          its: person.its.toString(),
+          sfNo: person.sfNo?.toString() ?? '',
+          willingToSolar: (form1?.answers['solarWillingness'] ?? '').toString(),
+          landlordApproval: (form1?.answers['landlordApproval'] ?? '')
+              .toString(),
+          form2Expectation: (form2?.answers['financeExpectation'] ?? '')
+              .toString(),
+          form4Expectation: (form4?.answers['financeExpectation'] ?? '')
+              .toString(),
+          roofReady: (temporaryForm?.answers['roofReady'] ?? '').toString(),
+        );
+      }).toList();
+
+      final grouped = <String, List<int>>{};
+      for (final row in reportTwoRows) {
+        final key = row.buildingName;
         final totals = grouped.putIfAbsent(key, () => [0, 0, 0]);
         totals[0]++;
-        totals[1] += completed;
-        totals[2] += required.length;
+        totals[1] += row.readinessCount;
+        totals[2] += 6;
       }
       final readinessRows =
           grouped.entries
@@ -182,8 +260,8 @@ class _ReportViewState extends State<ReportView> {
                 (entry) => _BuildingReadinessRow(
                   buildingName: entry.key,
                   profileCount: entry.value[0],
-                  completedForms: entry.value[1],
-                  requiredForms: entry.value[2],
+                  completedChecks: entry.value[1],
+                  totalChecks: entry.value[2],
                 ),
               )
               .toList()
@@ -192,6 +270,7 @@ class _ReportViewState extends State<ReportView> {
       if (!mounted) return;
       setState(() {
         _rows = rows.whereType<_ReportOneRow>().toList();
+        _reportTwoRows = reportTwoRows;
         _readinessRows = readinessRows;
         _isLoading = false;
       });
@@ -557,7 +636,64 @@ class _ReportViewState extends State<ReportView> {
     );
   }
 
+  Widget _buildStatusCell(String value) {
+    final normalized = value.trim().toLowerCase();
+    final isYes = normalized == 'yes';
+    final isNo = normalized == 'no';
+    final percentage = normalized.endsWith('%')
+        ? int.tryParse(normalized.substring(0, normalized.length - 1))
+        : null;
+    final color = percentage != null
+        ? _readinessColor(percentage)
+        : isYes
+        ? const Color(0xFF166534)
+        : isNo
+        ? const Color(0xFFB91C1C)
+        : const Color(0xFF64748B);
+    final background = percentage != null
+        ? color.withValues(alpha: 0.14)
+        : isYes
+        ? const Color(0xFFDCFCE7)
+        : isNo
+        ? const Color(0xFFFEE2E2)
+        : const Color(0xFFF1F5F9);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        value.trim().isEmpty ? 'Pending' : value,
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
   Widget _buildReadinessReport() {
+    final buildings = _readinessRows;
+    final selectedRows = _selectedBuilding == null
+        ? <_ReportTwoRow>[]
+        : _reportTwoRows
+              .where((row) => row.buildingName == _selectedBuilding)
+              .toList();
+    final selectedReadiness = selectedRows.isEmpty
+        ? 0
+        : (selectedRows
+                      .map((row) => row.readinessCount)
+                      .reduce((a, b) => a + b) /
+                  (selectedRows.length * 6) *
+                  100)
+              .round();
+    final chartRows = selectedRows.isEmpty ? _reportTwoRows : selectedRows;
+    final chartReadiness = chartRows.isEmpty
+        ? 0
+        : (chartRows.map((row) => row.readinessCount).reduce((a, b) => a + b) /
+                  (chartRows.length * 6) *
+                  100)
+              .round();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -574,9 +710,21 @@ class _ReportViewState extends State<ReportView> {
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
-          const Text('Progress across all profiles assigned to each building.'),
+          const Text('Select a building to inspect all assigned profiles.'),
           const SizedBox(height: 16),
-          if (_readinessRows.isEmpty)
+          _buildAnimatedReveal(
+            _buildReadinessCharts(chartReadiness),
+            const Duration(milliseconds: 450),
+          ),
+          const SizedBox(height: 24),
+          _buildReadinessLegend(),
+          const SizedBox(height: 24),
+          _buildAnimatedReveal(
+            _buildBuildingGrid(buildings),
+            const Duration(milliseconds: 550),
+          ),
+          const SizedBox(height: 24),
+          if (buildings.isEmpty)
             const Text('No building data available.')
           else
             SingleChildScrollView(
@@ -585,18 +733,18 @@ class _ReportViewState extends State<ReportView> {
                 columns: const [
                   DataColumn(label: Text('Building Name')),
                   DataColumn(label: Text('Profiles')),
-                  DataColumn(label: Text('Completed Forms')),
                   DataColumn(label: Text('Readiness')),
                 ],
-                rows: _readinessRows
+                rows: buildings
                     .map(
                       (row) => DataRow(
+                        selected: row.buildingName == _selectedBuilding,
+                        onSelectChanged: (_) => setState(
+                          () => _selectedBuilding = row.buildingName,
+                        ),
                         cells: [
                           DataCell(Text(row.buildingName)),
                           DataCell(Text(row.profileCount.toString())),
-                          DataCell(
-                            Text('${row.completedForms}/${row.requiredForms}'),
-                          ),
                           DataCell(Text('${row.percentage}%')),
                         ],
                       ),
@@ -604,8 +752,499 @@ class _ReportViewState extends State<ReportView> {
                     .toList(),
               ),
             ),
+          if (_selectedBuilding != null) ...[
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Applicants in $_selectedBuilding',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Readiness: $selectedReadiness%',
+                  style: const TextStyle(
+                    color: Color(0xFF0F766E),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (selectedRows.isEmpty)
+              const Text('No applicants found for this building.')
+            else
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: SingleChildScrollView(
+                  key: ValueKey(_selectedBuilding),
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Name')),
+                      DataColumn(label: Text('ITS')),
+                      DataColumn(label: Text('SF No.')),
+                      DataColumn(label: Text('Willing to Solar')),
+                      DataColumn(label: Text('Landlord Approval')),
+                      DataColumn(label: Text('Expectation (Form 2)')),
+                      DataColumn(label: Text('Expectation (Form 4)')),
+                      DataColumn(label: Text('Final Expectation')),
+                      DataColumn(label: Text('Roof Ready')),
+                      DataColumn(label: Text('Readiness')),
+                    ],
+                    rows: selectedRows
+                        .map(
+                          (row) => DataRow(
+                            cells: [
+                              DataCell(Text(row.name)),
+                              DataCell(Text(row.its)),
+                              DataCell(Text(row.sfNo)),
+                              DataCell(_buildStatusCell(row.willingToSolar)),
+                              DataCell(_buildStatusCell(row.landlordApproval)),
+                              DataCell(_buildStatusCell(row.form2Expectation)),
+                              DataCell(_buildStatusCell(row.form4Expectation)),
+                              DataCell(_buildStatusCell(row.finalExpectation)),
+                              DataCell(_buildStatusCell(row.roofReady)),
+                              DataCell(
+                                _buildStatusCell('${row.readinessPercentage}%'),
+                              ),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildAnimatedReveal(Widget child, Duration delay) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: delay,
+      curve: Curves.easeOutCubic,
+      builder: (context, value, animatedChild) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 14 * (1 - value)),
+            child: animatedChild,
+          ),
+        );
+      },
+      child: child,
+    );
+  }
+
+  Color _readinessColor(int percentage) {
+    if (percentage >= 75) return const Color(0xFF15803D);
+    if (percentage >= 50) return const Color(0xFFD97706);
+    return const Color(0xFFDC2626);
+  }
+
+  String _readinessDescription(int percentage) {
+    if (percentage >= 75) return 'Ready';
+    if (percentage >= 50) return 'Needs attention';
+    return 'Not ready';
+  }
+
+  Widget _buildReadinessLegend() {
+    const levels = [
+      (color: Color(0xFF15803D), range: '75-100%', label: 'Ready'),
+      (color: Color(0xFFD97706), range: '50-74%', label: 'Needs attention'),
+      (color: Color(0xFFDC2626), range: '0-49%', label: 'Not ready'),
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: Wrap(
+        spacing: 20,
+        runSpacing: 10,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.info_outline, color: Color(0xFF92400E), size: 18),
+              SizedBox(width: 8),
+              Text(
+                'Readiness color guide',
+                style: TextStyle(
+                  color: Color(0xFF92400E),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          for (final level in levels)
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: level.color,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text('${level.range}: ${level.label}'),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBuildingGrid(List<_BuildingReadinessRow> buildings) {
+    if (buildings.isEmpty) return const SizedBox.shrink();
+    final buildingQuery = _buildingSearchController.text.trim().toLowerCase();
+    final visibleBuildings = buildings
+        .where(
+          (building) =>
+              building.buildingName.toLowerCase().contains(buildingQuery),
+        )
+        .toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFCBD5E1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Buildings',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _buildingSearchController,
+            decoration: InputDecoration(
+              hintText: 'Search buildings',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: buildingQuery.isEmpty
+                  ? null
+                  : IconButton(
+                      onPressed: _buildingSearchController.clear,
+                      icon: const Icon(Icons.clear),
+                    ),
+              filled: true,
+              fillColor: Colors.white,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          if (visibleBuildings.isEmpty)
+            const Text('No buildings match your search.')
+          else
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 190,
+                mainAxisExtent: 112,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: visibleBuildings.length,
+              itemBuilder: (context, index) {
+                final building = visibleBuildings[index];
+                final isSelected = building.buildingName == _selectedBuilding;
+                final color = _readinessColor(building.percentage);
+                return InkWell(
+                  onTap: () =>
+                      setState(() => _selectedBuilding = building.buildingName),
+                  borderRadius: BorderRadius.circular(8),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.92, end: 1),
+                    duration: Duration(
+                      milliseconds: 220 + (index.clamp(0, 12) * 35),
+                    ),
+                    curve: Curves.easeOutBack,
+                    builder: (context, scale, child) => Transform.scale(
+                      scale: scale,
+                      alignment: Alignment.center,
+                      child: child,
+                    ),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 150,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? color : Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected
+                              ? color
+                              : color.withValues(alpha: 0.45),
+                          width: isSelected ? 2 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            building.buildingName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF1E293B),
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${building.profileCount} applicants',
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white70
+                                  : const Color(0xFF64748B),
+                              fontSize: 11,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${building.percentage}% ready',
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : color,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _readinessDescription(building.percentage),
+                            style: TextStyle(
+                              color: isSelected
+                                  ? Colors.white70
+                                  : color.withValues(alpha: 0.85),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReadinessCharts(int selectedReadiness) {
+    final remaining = 100 - selectedReadiness;
+    final hasData = _reportTwoRows.isNotEmpty;
+    final chartWidth = (_readinessRows.length * 42).clamp(520, 2800).toDouble();
+
+    return Wrap(
+      spacing: 16,
+      runSpacing: 16,
+      children: [
+        Container(
+          width: 360,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FDFA),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF99F6E4)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _selectedBuilding == null
+                    ? 'Overall Readiness'
+                    : '$_selectedBuilding Readiness',
+                style: const TextStyle(
+                  color: Color(0xFF115E59),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 132,
+                    height: 132,
+                    child: PieChart(
+                      PieChartData(
+                        centerSpaceRadius: 42,
+                        sectionsSpace: 2,
+                        sections: [
+                          PieChartSectionData(
+                            value: hasData ? selectedReadiness.toDouble() : 0,
+                            color: _readinessColor(selectedReadiness),
+                            title: hasData ? '$selectedReadiness%' : '0%',
+                            radius: 24,
+                            titleStyle: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          PieChartSectionData(
+                            value: hasData ? remaining.toDouble() : 100,
+                            color: const Color(0xFFCCFBF1),
+                            title: '',
+                            radius: 24,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _ReadinessLegend(
+                        color: Color(0xFF0F766E),
+                        label: 'Ready checks',
+                      ),
+                      SizedBox(height: 10),
+                      _ReadinessLegend(
+                        color: Color(0xFFCCFBF1),
+                        label: 'Remaining',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        Container(
+          width: 520,
+          height: 220,
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFFDE68A)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Readiness by Building',
+                style: TextStyle(
+                  color: Color(0xFF92400E),
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: chartWidth,
+                    child: BarChart(
+                      BarChartData(
+                        minY: 0,
+                        maxY: 100,
+                        gridData: FlGridData(
+                          show: true,
+                          drawVerticalLine: false,
+                          horizontalInterval: 25,
+                        ),
+                        borderData: FlBorderData(show: false),
+                        barTouchData: BarTouchData(enabled: false),
+                        titlesData: FlTitlesData(
+                          topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false),
+                          ),
+                          leftTitles: const AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 32,
+                            ),
+                          ),
+                          bottomTitles: AxisTitles(
+                            sideTitles: SideTitles(
+                              showTitles: true,
+                              reservedSize: 32,
+                              getTitlesWidget: (value, meta) {
+                                final index = value.toInt();
+                                if (index < 0 ||
+                                    index >= _readinessRows.length) {
+                                  return const SizedBox.shrink();
+                                }
+                                final name = _readinessRows[index].buildingName;
+                                return SideTitleWidget(
+                                  meta: meta,
+                                  child: Text(
+                                    name.length > 8
+                                        ? '${name.substring(0, 8)}...'
+                                        : name,
+                                    style: const TextStyle(fontSize: 9),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        barGroups: [
+                          for (
+                            var index = 0;
+                            index < _readinessRows.length;
+                            index++
+                          )
+                            BarChartGroupData(
+                              x: index,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: _readinessRows[index].percentage
+                                      .toDouble(),
+                                  width: 16,
+                                  color: _readinessColor(
+                                    _readinessRows[index].percentage,
+                                  ),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

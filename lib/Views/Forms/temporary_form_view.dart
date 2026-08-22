@@ -21,6 +21,8 @@ class TemporaryFormView extends StatefulWidget {
 class _TemporaryFormViewState extends State<TemporaryFormView> {
   final _formKey = GlobalKey<FormState>();
   final _buildingNameController = TextEditingController();
+  String? _roofReady;
+  final List<String> _roofReadyOptions = ['Yes', 'No'];
   bool _isReadOnly = false;
   bool _isSavingDraft = false;
   bool _isSubmitting = false;
@@ -52,6 +54,8 @@ class _TemporaryFormViewState extends State<TemporaryFormView> {
       setState(() {
         _buildingNameController.text =
             (loadedData.answers['buildingName'] ?? '').toString();
+        final roofReady = (loadedData.answers['roofReady'] ?? '').toString();
+        _roofReady = _roofReadyOptions.contains(roofReady) ? roofReady : null;
         _hasSavedForm = true;
       });
     }
@@ -70,7 +74,10 @@ class _TemporaryFormViewState extends State<TemporaryFormView> {
       personId: widget.person.id,
       formNumber: AppProvider.temporaryFormNumber,
       filledByStaffId: provider.currentUser?.uid ?? '',
-      answers: {'buildingName': _buildingNameController.text.trim()},
+      answers: {
+        'buildingName': _buildingNameController.text.trim(),
+        'roofReady': _roofReady ?? '',
+      },
       isDraft: isDraft,
       updatedAt: DateTime.now(),
     );
@@ -177,6 +184,31 @@ class _TemporaryFormViewState extends State<TemporaryFormView> {
     );
   }
 
+  Widget _buildRoofReadyField() {
+    return SizedBox(
+      width: 260,
+      child: DropdownButtonFormField<String>(
+        initialValue: _roofReady,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'Roof Ready *',
+          filled: true,
+          fillColor: _isReadOnly ? Colors.grey.shade100 : Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        items: _roofReadyOptions
+            .map(
+              (option) => DropdownMenuItem(value: option, child: Text(option)),
+            )
+            .toList(),
+        onChanged: _isReadOnly
+            ? null
+            : (value) => setState(() => _roofReady = value),
+        validator: (value) => value == null ? 'Required' : null,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppProvider>();
@@ -247,7 +279,11 @@ class _TemporaryFormViewState extends State<TemporaryFormView> {
                 ),
               ),
               const SizedBox(height: 16),
-              Wrap(spacing: 16, runSpacing: 16, children: [_buildTextField()]),
+              Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [_buildTextField(), _buildRoofReadyField()],
+              ),
               const SizedBox(height: 32),
               if (!_isReadOnly)
                 LayoutBuilder(
