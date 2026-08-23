@@ -1,3 +1,5 @@
+import 'dart:ui' show PointerDeviceKind;
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
@@ -90,13 +92,11 @@ class _ReportTwoRow {
   int get readinessCount => [
     willingToSolar,
     landlordApproval,
-    form2Expectation,
-    form4Expectation,
     finalExpectation,
     roofReady,
   ].where((value) => value.trim().isNotEmpty).length;
 
-  int get readinessPercentage => ((readinessCount / 6) * 100).round();
+  int get readinessPercentage => ((readinessCount / 4) * 100).round();
 
   static bool _isYes(String value) => value.trim().toLowerCase() == 'yes';
 }
@@ -123,6 +123,10 @@ class _ReadinessLegend extends StatelessWidget {
 class _ReportViewState extends State<ReportView> {
   final _searchController = TextEditingController();
   final _buildingSearchController = TextEditingController();
+  final _reportOneScrollController = ScrollController();
+  final _buildingTableScrollController = ScrollController();
+  final _applicantTableScrollController = ScrollController();
+  final _chartScrollController = ScrollController();
   List<_ReportOneRow> _rows = [];
   List<_ReportTwoRow> _reportTwoRows = [];
   List<_BuildingReadinessRow> _readinessRows = [];
@@ -163,6 +167,10 @@ class _ReportViewState extends State<ReportView> {
     _buildingSearchController
       ..removeListener(_refreshTable)
       ..dispose();
+    _reportOneScrollController.dispose();
+    _buildingTableScrollController.dispose();
+    _applicantTableScrollController.dispose();
+    _chartScrollController.dispose();
     _provider?.removeListener(_onProviderChanged);
     super.dispose();
   }
@@ -252,7 +260,7 @@ class _ReportViewState extends State<ReportView> {
         final totals = grouped.putIfAbsent(key, () => [0, 0, 0]);
         totals[0]++;
         totals[1] += row.readinessCount;
-        totals[2] += 6;
+        totals[2] += 4;
       }
       final readinessRows =
           grouped.entries
@@ -375,7 +383,9 @@ class _ReportViewState extends State<ReportView> {
           : _error != null
           ? Center(child: Text(_error!))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(
+                MediaQuery.sizeOf(context).width < 600 ? 12 : 24,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -399,27 +409,36 @@ class _ReportViewState extends State<ReportView> {
         .where((row) => row.percentage >= 100)
         .length;
 
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: [
-        _buildReportCard(
-          reportNumber: 1,
-          title: 'Report One',
-          subtitle: 'Expectation comparison',
-          count: _rows.length,
-          total: _provider?.people.length ?? 0,
-          color: const Color(0xFF2563EB),
-        ),
-        _buildReportCard(
-          reportNumber: 2,
-          title: 'Report Two',
-          subtitle: 'Building readiness',
-          count: completedBuildings,
-          total: _readinessRows.length,
-          color: const Color(0xFF0F766E),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth < 360
+            ? constraints.maxWidth
+            : 360.0;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _buildReportCard(
+              reportNumber: 1,
+              title: 'Report One',
+              subtitle: 'Expectation comparison',
+              count: _rows.length,
+              total: _provider?.people.length ?? 0,
+              color: const Color(0xFF2563EB),
+              width: cardWidth,
+            ),
+            _buildReportCard(
+              reportNumber: 2,
+              title: 'Report Two',
+              subtitle: 'Building readiness',
+              count: completedBuildings,
+              total: _readinessRows.length,
+              color: const Color(0xFF0F766E),
+              width: cardWidth,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -430,6 +449,7 @@ class _ReportViewState extends State<ReportView> {
     required int count,
     required int total,
     required Color color,
+    required double width,
   }) {
     final isSelected = _selectedReport == reportNumber;
     final percentage = total > 0 ? (count / total * 100).round() : 0;
@@ -443,7 +463,7 @@ class _ReportViewState extends State<ReportView> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          width: 360,
+          width: width,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: isSelected ? color : Colors.white,
@@ -575,13 +595,15 @@ class _ReportViewState extends State<ReportView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              const Expanded(
-                child: Text(
-                  'Report One',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+              const Text(
+                'Report One',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               ElevatedButton.icon(
                 onPressed: _exportVisibleRows,
@@ -606,29 +628,46 @@ class _ReportViewState extends State<ReportView> {
               child: Text('No matching report rows.'),
             )
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                sortColumnIndex: _sortColumnIndex,
-                sortAscending: _sortAscending,
-                columns: [
-                  for (var index = 0; index < headers.length; index++)
-                    DataColumn(label: Text(headers[index]), onSort: _onSort),
-                ],
-                rows: [
-                  for (final row in rows)
-                    DataRow(
-                      cells: [
-                        DataCell(Text(row.name)),
-                        DataCell(Text(row.its)),
-                        DataCell(Text(row.sfNo)),
-                        DataCell(Text(row.contact)),
-                        DataCell(Text(row.form2Expectation)),
-                        DataCell(Text(row.form4Expectation)),
-                        DataCell(Text(row.finalExpectation)),
-                      ],
-                    ),
-                ],
+            RawScrollbar(
+              controller: _reportOneScrollController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              interactive: true,
+              scrollbarOrientation: ScrollbarOrientation.bottom,
+              thickness: 12,
+              minThumbLength: 48,
+              child: ScrollConfiguration(
+                behavior: _horizontalScrollBehavior(context),
+                child: SingleChildScrollView(
+                  controller: _reportOneScrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  child: DataTable(
+                    sortColumnIndex: _sortColumnIndex,
+                    sortAscending: _sortAscending,
+                    columns: [
+                      for (var index = 0; index < headers.length; index++)
+                        DataColumn(
+                          label: Text(headers[index]),
+                          onSort: _onSort,
+                        ),
+                    ],
+                    rows: [
+                      for (final row in rows)
+                        DataRow(
+                          cells: [
+                            DataCell(Text(row.name)),
+                            DataCell(Text(row.its)),
+                            DataCell(Text(row.sfNo)),
+                            DataCell(Text(row.contact)),
+                            DataCell(Text(row.form2Expectation)),
+                            DataCell(Text(row.form4Expectation)),
+                            DataCell(Text(row.finalExpectation)),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
         ],
@@ -683,14 +722,14 @@ class _ReportViewState extends State<ReportView> {
         : (selectedRows
                       .map((row) => row.readinessCount)
                       .reduce((a, b) => a + b) /
-                  (selectedRows.length * 6) *
+                  (selectedRows.length * 4) *
                   100)
               .round();
     final chartRows = selectedRows.isEmpty ? _reportTwoRows : selectedRows;
     final chartReadiness = chartRows.isEmpty
         ? 0
         : (chartRows.map((row) => row.readinessCount).reduce((a, b) => a + b) /
-                  (chartRows.length * 6) *
+                  (chartRows.length * 4) *
                   100)
               .round();
 
@@ -727,43 +766,58 @@ class _ReportViewState extends State<ReportView> {
           if (buildings.isEmpty)
             const Text('No building data available.')
           else
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
-                columns: const [
-                  DataColumn(label: Text('Building Name')),
-                  DataColumn(label: Text('Profiles')),
-                  DataColumn(label: Text('Readiness')),
-                ],
-                rows: buildings
-                    .map(
-                      (row) => DataRow(
-                        selected: row.buildingName == _selectedBuilding,
-                        onSelectChanged: (_) => setState(
-                          () => _selectedBuilding = row.buildingName,
-                        ),
-                        cells: [
-                          DataCell(Text(row.buildingName)),
-                          DataCell(Text(row.profileCount.toString())),
-                          DataCell(Text('${row.percentage}%')),
-                        ],
-                      ),
-                    )
-                    .toList(),
+            RawScrollbar(
+              controller: _buildingTableScrollController,
+              thumbVisibility: true,
+              trackVisibility: true,
+              interactive: true,
+              scrollbarOrientation: ScrollbarOrientation.bottom,
+              thickness: 12,
+              minThumbLength: 48,
+              child: ScrollConfiguration(
+                behavior: _horizontalScrollBehavior(context),
+                child: SingleChildScrollView(
+                  controller: _buildingTableScrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const ClampingScrollPhysics(),
+                  child: DataTable(
+                    columns: const [
+                      DataColumn(label: Text('Building Name')),
+                      DataColumn(label: Text('Profiles')),
+                      DataColumn(label: Text('Readiness')),
+                    ],
+                    rows: buildings
+                        .map(
+                          (row) => DataRow(
+                            selected: row.buildingName == _selectedBuilding,
+                            onSelectChanged: (_) => setState(
+                              () => _selectedBuilding = row.buildingName,
+                            ),
+                            cells: [
+                              DataCell(Text(row.buildingName)),
+                              DataCell(Text(row.profileCount.toString())),
+                              DataCell(Text('${row.percentage}%')),
+                            ],
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
               ),
             ),
           if (_selectedBuilding != null) ...[
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 12,
+              runSpacing: 8,
               children: [
-                Expanded(
-                  child: Text(
-                    'Applicants in $_selectedBuilding',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                Text(
+                  'Applicants in $_selectedBuilding',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
@@ -783,48 +837,77 @@ class _ReportViewState extends State<ReportView> {
                 duration: const Duration(milliseconds: 300),
                 switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
-                child: SingleChildScrollView(
-                  key: ValueKey(_selectedBuilding),
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Name')),
-                      DataColumn(label: Text('ITS')),
-                      DataColumn(label: Text('SF No.')),
-                      DataColumn(label: Text('Willing to Solar')),
-                      DataColumn(label: Text('Landlord Approval')),
-                      DataColumn(label: Text('Expectation (Form 2)')),
-                      DataColumn(label: Text('Expectation (Form 4)')),
-                      DataColumn(label: Text('Final Expectation')),
-                      DataColumn(label: Text('Roof Ready')),
-                      DataColumn(label: Text('Readiness')),
-                    ],
-                    rows: selectedRows
-                        .map(
-                          (row) => DataRow(
-                            cells: [
-                              DataCell(Text(row.name)),
-                              DataCell(Text(row.its)),
-                              DataCell(Text(row.sfNo)),
-                              DataCell(_buildStatusCell(row.willingToSolar)),
-                              DataCell(_buildStatusCell(row.landlordApproval)),
-                              DataCell(_buildStatusCell(row.form2Expectation)),
-                              DataCell(_buildStatusCell(row.form4Expectation)),
-                              DataCell(_buildStatusCell(row.finalExpectation)),
-                              DataCell(_buildStatusCell(row.roofReady)),
-                              DataCell(
-                                _buildStatusCell('${row.readinessPercentage}%'),
+                child: RawScrollbar(
+                  controller: _applicantTableScrollController,
+                  thumbVisibility: true,
+                  trackVisibility: true,
+                  interactive: true,
+                  scrollbarOrientation: ScrollbarOrientation.bottom,
+                  thickness: 12,
+                  minThumbLength: 48,
+                  child: ScrollConfiguration(
+                    behavior: _horizontalScrollBehavior(context),
+                    child: SingleChildScrollView(
+                      key: ValueKey(_selectedBuilding),
+                      controller: _applicantTableScrollController,
+                      scrollDirection: Axis.horizontal,
+                      physics: const ClampingScrollPhysics(),
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('Name')),
+                          DataColumn(label: Text('ITS')),
+                          DataColumn(label: Text('SF No.')),
+                          DataColumn(label: Text('Willing to Solar')),
+                          DataColumn(label: Text('Landlord Approval')),
+                          DataColumn(label: Text('Final Expectation')),
+                          DataColumn(label: Text('Roof Ready')),
+                          DataColumn(label: Text('Readiness')),
+                        ],
+                        rows: selectedRows
+                            .map(
+                              (row) => DataRow(
+                                cells: [
+                                  DataCell(Text(row.name)),
+                                  DataCell(Text(row.its)),
+                                  DataCell(Text(row.sfNo)),
+                                  DataCell(
+                                    _buildStatusCell(row.willingToSolar),
+                                  ),
+                                  DataCell(
+                                    _buildStatusCell(row.landlordApproval),
+                                  ),
+                                  DataCell(
+                                    _buildStatusCell(row.finalExpectation),
+                                  ),
+                                  DataCell(_buildStatusCell(row.roofReady)),
+                                  DataCell(
+                                    _buildStatusCell(
+                                      '${row.readinessPercentage}%',
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        )
-                        .toList(),
+                            )
+                            .toList(),
+                      ),
+                    ),
                   ),
                 ),
               ),
           ],
         ],
       ),
+    );
+  }
+
+  ScrollBehavior _horizontalScrollBehavior(BuildContext context) {
+    return ScrollConfiguration.of(context).copyWith(
+      dragDevices: {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.stylus,
+        PointerDeviceKind.trackpad,
+      },
     );
   }
 
@@ -1064,187 +1147,216 @@ class _ReportViewState extends State<ReportView> {
     final hasData = _reportTwoRows.isNotEmpty;
     final chartWidth = (_readinessRows.length * 42).clamp(520, 2800).toDouble();
 
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: [
-        Container(
-          width: 360,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF0FDFA),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF99F6E4)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _selectedBuilding == null
-                    ? 'Overall Readiness'
-                    : '$_selectedBuilding Readiness',
-                style: const TextStyle(
-                  color: Color(0xFF115E59),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pieWidth = constraints.maxWidth < 360
+            ? constraints.maxWidth
+            : 360.0;
+        final chartCardWidth = constraints.maxWidth < 520
+            ? constraints.maxWidth
+            : 520.0;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            Container(
+              width: pieWidth,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDFA),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF99F6E4)),
               ),
-              const SizedBox(height: 12),
-              Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: 132,
-                    height: 132,
-                    child: PieChart(
-                      PieChartData(
-                        centerSpaceRadius: 42,
-                        sectionsSpace: 2,
-                        sections: [
-                          PieChartSectionData(
-                            value: hasData ? selectedReadiness.toDouble() : 0,
-                            color: _readinessColor(selectedReadiness),
-                            title: hasData ? '$selectedReadiness%' : '0%',
-                            radius: 24,
-                            titleStyle: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          PieChartSectionData(
-                            value: hasData ? remaining.toDouble() : 100,
-                            color: const Color(0xFFCCFBF1),
-                            title: '',
-                            radius: 24,
-                          ),
-                        ],
-                      ),
+                  Text(
+                    _selectedBuilding == null
+                        ? 'Overall Readiness'
+                        : '$_selectedBuilding Readiness',
+                    style: const TextStyle(
+                      color: Color(0xFF115E59),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 20),
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 12),
+                  Row(
                     children: [
-                      _ReadinessLegend(
-                        color: Color(0xFF0F766E),
-                        label: 'Ready checks',
+                      SizedBox(
+                        width: 132,
+                        height: 132,
+                        child: PieChart(
+                          PieChartData(
+                            centerSpaceRadius: 42,
+                            sectionsSpace: 2,
+                            sections: [
+                              PieChartSectionData(
+                                value: hasData
+                                    ? selectedReadiness.toDouble()
+                                    : 0,
+                                color: _readinessColor(selectedReadiness),
+                                title: hasData ? '$selectedReadiness%' : '0%',
+                                radius: 24,
+                                titleStyle: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              PieChartSectionData(
+                                value: hasData ? remaining.toDouble() : 100,
+                                color: const Color(0xFFCCFBF1),
+                                title: '',
+                                radius: 24,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      SizedBox(height: 10),
-                      _ReadinessLegend(
-                        color: Color(0xFFCCFBF1),
-                        label: 'Remaining',
+                      const SizedBox(width: 20),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _ReadinessLegend(
+                            color: Color(0xFF0F766E),
+                            label: 'Ready checks',
+                          ),
+                          SizedBox(height: 10),
+                          _ReadinessLegend(
+                            color: Color(0xFFCCFBF1),
+                            label: 'Remaining',
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        Container(
-          width: 520,
-          height: 220,
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFBEB),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFFDE68A)),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Readiness by Building',
-                style: TextStyle(
-                  color: Color(0xFF92400E),
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+            ),
+            Container(
+              width: chartCardWidth,
+              height: 220,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFBEB),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFDE68A)),
               ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: chartWidth,
-                    child: BarChart(
-                      BarChartData(
-                        minY: 0,
-                        maxY: 100,
-                        gridData: FlGridData(
-                          show: true,
-                          drawVerticalLine: false,
-                          horizontalInterval: 25,
-                        ),
-                        borderData: FlBorderData(show: false),
-                        barTouchData: BarTouchData(enabled: false),
-                        titlesData: FlTitlesData(
-                          topTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          rightTitles: const AxisTitles(
-                            sideTitles: SideTitles(showTitles: false),
-                          ),
-                          leftTitles: const AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 32,
-                            ),
-                          ),
-                          bottomTitles: AxisTitles(
-                            sideTitles: SideTitles(
-                              showTitles: true,
-                              reservedSize: 32,
-                              getTitlesWidget: (value, meta) {
-                                final index = value.toInt();
-                                if (index < 0 ||
-                                    index >= _readinessRows.length) {
-                                  return const SizedBox.shrink();
-                                }
-                                final name = _readinessRows[index].buildingName;
-                                return SideTitleWidget(
-                                  meta: meta,
-                                  child: Text(
-                                    name.length > 8
-                                        ? '${name.substring(0, 8)}...'
-                                        : name,
-                                    style: const TextStyle(fontSize: 9),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        barGroups: [
-                          for (
-                            var index = 0;
-                            index < _readinessRows.length;
-                            index++
-                          )
-                            BarChartGroupData(
-                              x: index,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: _readinessRows[index].percentage
-                                      .toDouble(),
-                                  width: 16,
-                                  color: _readinessColor(
-                                    _readinessRows[index].percentage,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Readiness by Building',
+                    style: TextStyle(
+                      color: Color(0xFF92400E),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: RawScrollbar(
+                      controller: _chartScrollController,
+                      thumbVisibility: true,
+                      trackVisibility: true,
+                      interactive: true,
+                      scrollbarOrientation: ScrollbarOrientation.bottom,
+                      thickness: 12,
+                      minThumbLength: 48,
+                      child: ScrollConfiguration(
+                        behavior: _horizontalScrollBehavior(context),
+                        child: SingleChildScrollView(
+                          controller: _chartScrollController,
+                          scrollDirection: Axis.horizontal,
+                          physics: const ClampingScrollPhysics(),
+                          child: SizedBox(
+                            width: chartWidth,
+                            child: BarChart(
+                              BarChartData(
+                                minY: 0,
+                                maxY: 100,
+                                gridData: FlGridData(
+                                  show: true,
+                                  drawVerticalLine: false,
+                                  horizontalInterval: 25,
                                 ),
-                              ],
+                                borderData: FlBorderData(show: false),
+                                barTouchData: BarTouchData(enabled: false),
+                                titlesData: FlTitlesData(
+                                  topTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  rightTitles: const AxisTitles(
+                                    sideTitles: SideTitles(showTitles: false),
+                                  ),
+                                  leftTitles: const AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 32,
+                                    ),
+                                  ),
+                                  bottomTitles: AxisTitles(
+                                    sideTitles: SideTitles(
+                                      showTitles: true,
+                                      reservedSize: 32,
+                                      getTitlesWidget: (value, meta) {
+                                        final index = value.toInt();
+                                        if (index < 0 ||
+                                            index >= _readinessRows.length) {
+                                          return const SizedBox.shrink();
+                                        }
+                                        final name =
+                                            _readinessRows[index].buildingName;
+                                        return SideTitleWidget(
+                                          meta: meta,
+                                          child: Text(
+                                            name.length > 8
+                                                ? '${name.substring(0, 8)}...'
+                                                : name,
+                                            style: const TextStyle(fontSize: 9),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                barGroups: [
+                                  for (
+                                    var index = 0;
+                                    index < _readinessRows.length;
+                                    index++
+                                  )
+                                    BarChartGroupData(
+                                      x: index,
+                                      barRods: [
+                                        BarChartRodData(
+                                          toY: _readinessRows[index].percentage
+                                              .toDouble(),
+                                          width: 16,
+                                          color: _readinessColor(
+                                            _readinessRows[index].percentage,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                ],
+                              ),
                             ),
-                        ],
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        ),
-      ],
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1259,26 +1371,36 @@ class _ReportViewState extends State<ReportView> {
         .where((row) => _ReportOneRow._isYes(row.finalExpectation))
         .length;
 
-    return Wrap(
-      spacing: 16,
-      runSpacing: 16,
-      children: [
-        _buildExpectationPie(
-          title: 'Form 2 Expectation',
-          yesCount: form2Yes,
-          color: const Color(0xFF2563EB),
-        ),
-        _buildExpectationPie(
-          title: 'Form 4 Expectation',
-          yesCount: form4Yes,
-          color: const Color(0xFF0F766E),
-        ),
-        _buildExpectationPie(
-          title: 'Final Expectation',
-          yesCount: finalYes,
-          color: const Color(0xFFF59E0B),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = constraints.maxWidth < 360
+            ? constraints.maxWidth
+            : 360.0;
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            _buildExpectationPie(
+              title: 'Form 2 Expectation',
+              yesCount: form2Yes,
+              color: const Color(0xFF2563EB),
+              width: cardWidth,
+            ),
+            _buildExpectationPie(
+              title: 'Form 4 Expectation',
+              yesCount: form4Yes,
+              color: const Color(0xFF0F766E),
+              width: cardWidth,
+            ),
+            _buildExpectationPie(
+              title: 'Final Expectation',
+              yesCount: finalYes,
+              color: const Color(0xFFF59E0B),
+              width: cardWidth,
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -1286,6 +1408,7 @@ class _ReportViewState extends State<ReportView> {
     required String title,
     required int yesCount,
     required Color color,
+    required double width,
   }) {
     final noCount = _rows.length - yesCount;
     final hasData = _rows.isNotEmpty;
@@ -1319,7 +1442,7 @@ class _ReportViewState extends State<ReportView> {
           ];
 
     return Container(
-      width: 360,
+      width: width,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
