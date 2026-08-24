@@ -94,7 +94,7 @@ class _ReportTwoRow {
     landlordApproval,
     finalExpectation,
     roofReady,
-  ].where((value) => value.trim().isNotEmpty).length;
+  ].where(_isYes).length;
 
   int get readinessPercentage => ((readinessCount / 4) * 100).round();
 
@@ -791,7 +791,10 @@ class _ReportViewState extends State<ReportView> {
                           (row) => DataRow(
                             selected: row.buildingName == _selectedBuilding,
                             onSelectChanged: (_) => setState(
-                              () => _selectedBuilding = row.buildingName,
+                              () => _selectedBuilding =
+                                  _selectedBuilding == row.buildingName
+                                  ? null
+                                  : row.buildingName,
                             ),
                             cells: [
                               DataCell(Text(row.buildingName)),
@@ -1060,8 +1063,11 @@ class _ReportViewState extends State<ReportView> {
                 final isSelected = building.buildingName == _selectedBuilding;
                 final color = _readinessColor(building.percentage);
                 return InkWell(
-                  onTap: () =>
-                      setState(() => _selectedBuilding = building.buildingName),
+                  onTap: () => setState(
+                    () => _selectedBuilding = isSelected
+                        ? null
+                        : building.buildingName,
+                  ),
                   borderRadius: BorderRadius.circular(8),
                   child: TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.92, end: 1),
@@ -1218,10 +1224,6 @@ class _ReportViewState extends State<ReportView> {
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _ReadinessLegend(
-                            color: Color(0xFF0F766E),
-                            label: 'Ready checks',
-                          ),
                           SizedBox(height: 10),
                           _ReadinessLegend(
                             color: Color(0xFFCCFBF1),
