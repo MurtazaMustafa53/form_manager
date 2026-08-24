@@ -55,11 +55,13 @@ class _FormFinanceViewState extends State<FormFinanceView> {
   final _numberOfInverterController = TextEditingController(text: '1');
   final _lithiumBatteryController = TextEditingController(text: '1');
   final _structureQuantityController = TextEditingController(text: '1');
-  final _solarPanelAmountController = TextEditingController(text: '1');
-  final _inverterAmountController = TextEditingController(text: '1');
-  final _lithiumBatteryAmountController = TextEditingController(text: '1');
-  final _structureAmountController = TextEditingController(text: '1');
-  final _labourPriceController = TextEditingController(text: '1');
+  final _solarPanelAmountController = TextEditingController(text: '34560');
+  final _inverterAmountController = TextEditingController(text: '65000');
+  final _lithiumBatteryAmountController = TextEditingController(text: '135000');
+  late final _structureAmountController = TextEditingController(
+    text: _selectedStructure == 'elevated' ? '40000' : '20000',
+  );
+  final _labourPriceController = TextEditingController(text: '15000');
   final _ownContributionController = TextEditingController(text: '0');
   final _qarzanHasanaController = TextEditingController(text: '0');
   final _totalContributionController = TextEditingController(text: '0');
@@ -138,14 +140,18 @@ class _FormFinanceViewState extends State<FormFinanceView> {
       _structureQuantityController.text =
           (financeAnswers['structureQuantity'] ?? 1).toString();
       _solarPanelAmountController.text =
-          (financeAnswers['solarPanelAmount'] ?? 1).toString();
-      _inverterAmountController.text = (financeAnswers['inverterAmount'] ?? 1)
-          .toString();
+          (financeAnswers['solarPanelAmount'] ?? 34560).toString();
+      _inverterAmountController.text =
+          (financeAnswers['inverterAmount'] ?? 65000).toString();
       _lithiumBatteryAmountController.text =
-          (financeAnswers['lithiumBatteryAmount'] ?? 1).toString();
-      _structureAmountController.text = (financeAnswers['structureAmount'] ?? 1)
-          .toString();
-      _labourPriceController.text = (financeAnswers['labourPrice'] ?? 1)
+          (financeAnswers['lithiumBatteryAmount'] ?? 135000).toString();
+      _structureAmountController.text =
+          (financeAnswers['structureAmount'] ??
+                  (financeAnswers['structure'] == 'elevated'
+                      ? '40000'
+                      : '20000'))
+              .toString();
+      _labourPriceController.text = (financeAnswers['labourPrice'] ?? 15000)
           .toString();
       _ownContributionController.text = (financeAnswers['ownContribution'] ?? 0)
           .toString();

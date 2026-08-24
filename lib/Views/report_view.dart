@@ -1201,7 +1201,7 @@ class _ReportViewState extends State<ReportView> {
                                 value: hasData
                                     ? selectedReadiness.toDouble()
                                     : 0,
-                                color: _readinessColor(selectedReadiness),
+                                color: const Color(0xFF15803D),
                                 title: hasData ? '$selectedReadiness%' : '0%',
                                 radius: 24,
                                 titleStyle: const TextStyle(
@@ -1224,6 +1224,10 @@ class _ReportViewState extends State<ReportView> {
                       const Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          _ReadinessLegend(
+                            color: Color(0xFF15803D),
+                            label: 'Ready',
+                          ),
                           SizedBox(height: 10),
                           _ReadinessLegend(
                             color: Color(0xFFCCFBF1),
