@@ -6,6 +6,7 @@ import 'package:form_manager/Model/form_data_model.dart';
 import 'package:form_manager/Views/Forms/form2_view.dart';
 import 'package:form_manager/Views/Forms/form3_view.dart';
 import 'package:form_manager/Views/Forms/form_finance_view.dart';
+import 'package:form_manager/Views/report_view.dart';
 
 void main() {
   group('Form configuration helpers', () {
@@ -63,6 +64,12 @@ void main() {
       expect(financeDefaultPrice('band'), 35);
       expect(financeDefaultPrice('duct1x1'), 1);
       expect(financeDefaultPrice('solarPanel'), 1);
+    });
+
+    test('report money formatting uses PKR with thousands separators', () {
+      expect(formatPkrAmount(1234567), 'PKR 1,234,567');
+      expect(formatPkrAmount(1234567.89), 'PKR 1,234,567.89');
+      expect(formatPkrAmount(0), 'PKR 0');
     });
 
     test(

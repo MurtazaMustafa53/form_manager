@@ -1,9 +1,10 @@
 import 'dart:ui' show PointerDeviceKind;
 
-import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/material.dart';
 import 'package:form_manager/Controller/provider_controller.dart';
 import 'package:form_manager/Model/form_data_model.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 class ReportView extends StatefulWidget {
@@ -89,9 +90,11 @@ class _ReportTwoRow {
   String get finalExpectation =>
       _isYes(form2Expectation) || _isYes(form4Expectation) ? 'Yes' : 'No';
 
+  String get reversedLandlordApproval => _reverseApproval(landlordApproval);
+
   int get readinessCount => [
     willingToSolar,
-    landlordApproval,
+    reversedLandlordApproval,
     finalExpectation,
     roofReady,
   ].where(_isYes).length;
@@ -99,6 +102,48 @@ class _ReportTwoRow {
   int get readinessPercentage => ((readinessCount / 4) * 100).round();
 
   static bool _isYes(String value) => value.trim().toLowerCase() == 'yes';
+
+  static String _reverseApproval(String value) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized == 'yes') return 'No';
+    if (normalized == 'no') return 'Yes';
+    if (normalized == 'maybe') return 'No';
+    return value.trim().isEmpty ? 'No' : value;
+  }
+}
+
+class _ReportThreeRow {
+  final String name;
+  final String its;
+  final double financeOwnContribution;
+  final double financeQarzanHasana;
+  final double financeTotalContribution;
+  final double amilOwnAmount;
+  final double amilQarzanAmount;
+  final double amilTotalContribution;
+  final double totalCost;
+  final int readinessPercentage;
+
+  const _ReportThreeRow({
+    required this.name,
+    required this.its,
+    required this.financeOwnContribution,
+    required this.financeQarzanHasana,
+    required this.financeTotalContribution,
+    required this.amilOwnAmount,
+    required this.amilQarzanAmount,
+    required this.amilTotalContribution,
+    required this.totalCost,
+    required this.readinessPercentage,
+  });
+}
+
+String formatPkrAmount(double value) {
+  final formatter = NumberFormat('#,##0.##', 'en_US');
+  final displayValue = value == value.roundToDouble()
+      ? formatter.format(value.toInt())
+      : formatter.format(value);
+  return 'PKR $displayValue';
 }
 
 class _ReadinessLegend extends StatelessWidget {
@@ -127,8 +172,10 @@ class _ReportViewState extends State<ReportView> {
   final _buildingTableScrollController = ScrollController();
   final _applicantTableScrollController = ScrollController();
   final _chartScrollController = ScrollController();
+  final _reportThreeTableScrollController = ScrollController();
   List<_ReportOneRow> _rows = [];
   List<_ReportTwoRow> _reportTwoRows = [];
+  List<_ReportThreeRow> _reportThreeRows = [];
   List<_BuildingReadinessRow> _readinessRows = [];
   bool _isLoading = true;
   String? _error;
@@ -139,6 +186,12 @@ class _ReportViewState extends State<ReportView> {
   bool _loadInProgress = false;
   int _selectedReport = 1;
   String? _selectedBuilding;
+  int _reportTwoSortColumnIndex = 0;
+  bool _reportTwoSortAscending = true;
+  int _reportTwoApplicantSortColumnIndex = 0;
+  bool _reportTwoApplicantSortAscending = true;
+  int _reportThreeSortColumnIndex = 0;
+  bool _reportThreeSortAscending = true;
 
   @override
   void initState() {
@@ -171,6 +224,7 @@ class _ReportViewState extends State<ReportView> {
     _buildingTableScrollController.dispose();
     _applicantTableScrollController.dispose();
     _chartScrollController.dispose();
+    _reportThreeTableScrollController.dispose();
     _provider?.removeListener(_onProviderChanged);
     super.dispose();
   }
@@ -254,6 +308,42 @@ class _ReportViewState extends State<ReportView> {
         );
       }).toList();
 
+      final readinessByPerson = <String, int>{};
+      for (final row in reportTwoRows) {
+        readinessByPerson[row.its] = row.readinessPercentage;
+      }
+      final reportThreeRows = provider.people
+          .map((person) {
+            final forms = formsByPerson[person.id] ?? {};
+            final finance = forms[5];
+            if (finance == null) return null;
+            final form4 = forms[4];
+            final financeAnswers = finance.answers;
+            final form4Answers = form4?.answers ?? {};
+            double money(dynamic value) =>
+                double.tryParse(value.toString().replaceAll(',', '').trim()) ??
+                0;
+            return _ReportThreeRow(
+              name: person.name,
+              its: person.its.toString(),
+              financeOwnContribution: money(financeAnswers['ownContribution']),
+              financeQarzanHasana: money(financeAnswers['qarzanHasana']),
+              financeTotalContribution: money(
+                financeAnswers['totalContribution'],
+              ),
+              amilOwnAmount: money(form4Answers['ownAmount']),
+              amilQarzanAmount: money(form4Answers['qarzanAmount']),
+              amilTotalContribution: money(
+                form4Answers['totalMuminContribution'],
+              ),
+              totalCost: money(financeAnswers['summaryTotal']),
+              readinessPercentage:
+                  readinessByPerson[person.its.toString()] ?? 0,
+            );
+          })
+          .whereType<_ReportThreeRow>()
+          .toList();
+
       final grouped = <String, List<int>>{};
       for (final row in reportTwoRows) {
         final key = row.buildingName;
@@ -279,6 +369,7 @@ class _ReportViewState extends State<ReportView> {
       setState(() {
         _rows = rows.whereType<_ReportOneRow>().toList();
         _reportTwoRows = reportTwoRows;
+        _reportThreeRows = reportThreeRows;
         _readinessRows = readinessRows;
         _isLoading = false;
       });
@@ -338,6 +429,143 @@ class _ReportViewState extends State<ReportView> {
     });
   }
 
+  void _onSortReportTwo(int columnIndex, bool ascending) {
+    setState(() {
+      _reportTwoSortColumnIndex = columnIndex;
+      _reportTwoSortAscending = ascending;
+    });
+  }
+
+  void _onSortReportTwoApplicants(int columnIndex, bool ascending) {
+    setState(() {
+      _reportTwoApplicantSortColumnIndex = columnIndex;
+      _reportTwoApplicantSortAscending = ascending;
+    });
+  }
+
+  void _onSortReportThree(int columnIndex, bool ascending) {
+    setState(() {
+      _reportThreeSortColumnIndex = columnIndex;
+      _reportThreeSortAscending = ascending;
+    });
+  }
+
+  List<_BuildingReadinessRow> get _sortedReadinessRows {
+    final rows = List<_BuildingReadinessRow>.from(_readinessRows);
+    rows.sort((a, b) {
+      int comparison;
+      switch (_reportTwoSortColumnIndex) {
+        case 0:
+          comparison = a.buildingName.compareTo(b.buildingName);
+          break;
+        case 1:
+          comparison = a.profileCount.compareTo(b.profileCount);
+          break;
+        case 2:
+          comparison = a.percentage.compareTo(b.percentage);
+          break;
+        default:
+          comparison = a.buildingName.compareTo(b.buildingName);
+      }
+      return _reportTwoSortAscending ? comparison : -comparison;
+    });
+    return rows;
+  }
+
+  List<_ReportTwoRow> _sortReportTwoApplicants(List<_ReportTwoRow> rows) {
+    final sorted = List<_ReportTwoRow>.from(rows);
+    sorted.sort((a, b) {
+      int comparison;
+      switch (_reportTwoApplicantSortColumnIndex) {
+        case 0:
+          comparison = a.name.compareTo(b.name);
+          break;
+        case 1:
+          comparison = a.its.compareTo(b.its);
+          break;
+        case 2:
+          comparison = a.sfNo.compareTo(b.sfNo);
+          break;
+        case 3:
+          comparison = a.willingToSolar.compareTo(b.willingToSolar);
+          break;
+        case 4:
+          comparison = a.landlordApproval.compareTo(b.landlordApproval);
+          break;
+        case 5:
+          comparison = a.finalExpectation.compareTo(b.finalExpectation);
+          break;
+        case 6:
+          comparison = a.roofReady.compareTo(b.roofReady);
+          break;
+        case 7:
+          comparison = a.readinessPercentage.compareTo(b.readinessPercentage);
+          break;
+        default:
+          comparison = a.name.compareTo(b.name);
+      }
+      return _reportTwoApplicantSortAscending ? comparison : -comparison;
+    });
+    return sorted;
+  }
+
+  List<_ReportThreeRow> get _sortedReportThreeRows {
+    final rows = List<_ReportThreeRow>.from(_reportThreeRows);
+    rows.sort((a, b) {
+      int comparison;
+      switch (_reportThreeSortColumnIndex) {
+        case 0:
+          comparison = a.name.compareTo(b.name);
+          break;
+        case 1:
+          comparison = a.its.compareTo(b.its);
+          break;
+        case 2:
+          comparison = a.financeOwnContribution.compareTo(
+            b.financeOwnContribution,
+          );
+          break;
+        case 3:
+          comparison = a.financeQarzanHasana.compareTo(b.financeQarzanHasana);
+          break;
+        case 4:
+          comparison = a.financeTotalContribution.compareTo(
+            b.financeTotalContribution,
+          );
+          break;
+        case 5:
+          comparison = a.amilOwnAmount.compareTo(b.amilOwnAmount);
+          break;
+        case 6:
+          comparison = a.amilQarzanAmount.compareTo(b.amilQarzanAmount);
+          break;
+        case 7:
+          comparison = a.amilTotalContribution.compareTo(
+            b.amilTotalContribution,
+          );
+          break;
+        case 8:
+          comparison = a.totalCost.compareTo(b.totalCost);
+          break;
+        case 9:
+          comparison = 0;
+          break;
+        case 10:
+          comparison = (400000.0 - a.amilTotalContribution).compareTo(
+            400000.0 - b.amilTotalContribution,
+          );
+          break;
+        case 11:
+          comparison = a.readinessPercentage.compareTo(b.readinessPercentage);
+          break;
+        default:
+          comparison = a.name.compareTo(b.name);
+      }
+      return _reportThreeSortAscending ? comparison : -comparison;
+    });
+    return rows;
+  }
+
   void _refreshTable() => setState(() {});
 
   Future<void> _exportVisibleRows() async {
@@ -395,8 +623,10 @@ class _ReportViewState extends State<ReportView> {
                     _buildExpectationChart(),
                     const SizedBox(height: 24),
                     _buildReportOneTable(),
-                  ] else ...[
+                  ] else if (_selectedReport == 2) ...[
                     _buildReadinessReport(),
+                  ] else ...[
+                    _buildFinanceCommitmentReport(),
                   ],
                 ],
               ),
@@ -427,6 +657,7 @@ class _ReportViewState extends State<ReportView> {
               color: const Color(0xFF2563EB),
               width: cardWidth,
             ),
+
             _buildReportCard(
               reportNumber: 2,
               title: 'Report Two',
@@ -434,6 +665,15 @@ class _ReportViewState extends State<ReportView> {
               count: completedBuildings,
               total: _readinessRows.length,
               color: const Color(0xFF0F766E),
+              width: cardWidth,
+            ),
+            _buildReportCard(
+              reportNumber: 3,
+              title: 'Report Three',
+              subtitle: 'Finance Overview',
+              count: _reportThreeRows.length,
+              total: _provider?.people.length ?? 0,
+              color: const Color(0xFFDB2777),
               width: cardWidth,
             ),
           ],
@@ -679,6 +919,7 @@ class _ReportViewState extends State<ReportView> {
     final normalized = value.trim().toLowerCase();
     final isYes = normalized == 'yes';
     final isNo = normalized == 'no';
+
     final percentage = normalized.endsWith('%')
         ? int.tryParse(normalized.substring(0, normalized.length - 1))
         : null;
@@ -708,6 +949,427 @@ class _ReportViewState extends State<ReportView> {
         style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
     );
+  }
+
+  Widget _buildFinanceCommitmentReport() {
+    const costPerPerson = 400000.0;
+    final peopleCount = _reportThreeRows.length;
+    final requiredBudget = peopleCount * costPerPerson;
+    final financeOwn = _reportThreeRows.fold<double>(
+      0,
+      (total, row) => total + row.financeOwnContribution,
+    );
+    final financeQarzan = _reportThreeRows.fold<double>(
+      0,
+      (total, row) => total + row.financeQarzanHasana,
+    );
+    final financeTotal = _reportThreeRows.fold<double>(
+      0,
+      (total, row) => total + row.financeTotalContribution,
+    );
+    final amilOwn = _reportThreeRows.fold<double>(
+      0,
+      (total, row) => total + row.amilOwnAmount,
+    );
+    final amilQarzan = _reportThreeRows.fold<double>(
+      0,
+      (total, row) => total + row.amilQarzanAmount,
+    );
+    final amilTotal = _reportThreeRows.fold<double>(
+      0,
+      (total, row) => total + row.amilTotalContribution,
+    );
+    final totalCost = _reportThreeRows.fold<double>(
+      0,
+      (total, row) => total + row.totalCost,
+    );
+    final remaining = requiredBudget - amilTotal;
+    final readiness = peopleCount == 0
+        ? 0
+        : (_reportThreeRows.fold<int>(
+                    0,
+                    (total, row) => total + row.readinessPercentage,
+                  ) /
+                  peopleCount)
+              .round();
+    final ownContributors = _reportThreeRows
+        .where((row) => row.financeOwnContribution > 0)
+        .length;
+    final ownContributionRatio = requiredBudget == 0
+        ? 0.0
+        : (financeOwn / requiredBudget).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildAnimatedReveal(
+          const Text(
+            'Report Three: Mumin Commitment',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
+          const Duration(milliseconds: 350),
+        ),
+        const SizedBox(height: 6),
+
+        const SizedBox(height: 20),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth < 360
+                ? constraints.maxWidth
+                : 260.0;
+            final metrics = [
+              (
+                'Finance Form People',
+                '$peopleCount people',
+                '${formatPkrAmount(400000)} each',
+                const Color(0xFF2563EB),
+                Icons.groups_2_outlined,
+              ),
+              (
+                'Required Budget',
+                _formatReportMoney(requiredBudget),
+                '$peopleCount people',
+                const Color(0xFF7C3AED),
+                Icons.account_balance_wallet_outlined,
+              ),
+              (
+                'Finance Total Cost',
+                _formatReportMoney(totalCost),
+                'From finance form',
+                const Color(0xFFEA580C),
+                Icons.receipt_long_outlined,
+              ),
+              (
+                'Remaining Budget',
+                _formatReportMoney(remaining),
+                '${formatPkrAmount(400000)} less Mumin contribution',
+                const Color(0xFFDB2777),
+                Icons.trending_down_outlined,
+              ),
+              (
+                'Readiness',
+                '$readiness%',
+                'From Report Two',
+                const Color(0xFF0F766E),
+                Icons.verified_outlined,
+              ),
+            ];
+            return Wrap(
+              spacing: 14,
+              runSpacing: 14,
+              children: [
+                for (var index = 0; index < metrics.length; index++)
+                  _buildCommitmentMetric(
+                    title: metrics[index].$1,
+                    value: metrics[index].$2,
+                    caption: metrics[index].$3,
+                    color: metrics[index].$4,
+                    icon: metrics[index].$5,
+                    width: width,
+                    delay: 100 + index * 90,
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        _buildCommitmentSection(
+          title: 'MUMIN COMMITMENT',
+          color: const Color(0xFF0E7490),
+          children: [
+            _buildCommitmentValue('Own amount', financeOwn),
+            _buildCommitmentValue('Qarzan Hasana', financeQarzan),
+            _buildCommitmentValue('Total Contribution', financeTotal),
+          ],
+        ),
+        const SizedBox(height: 14),
+        _buildCommitmentSection(
+          title: 'AMIL SAHEB COMMITMENT',
+          color: const Color(0xFF9333EA),
+          children: [
+            _buildCommitmentValue('Own amount', amilOwn),
+            _buildCommitmentValue('Qarzan amount', amilQarzan),
+            _buildCommitmentValue('Total Mumin contribution', amilTotal),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        const SizedBox(height: 22),
+        _buildReportThreeTable(),
+      ],
+    );
+  }
+
+  Widget _buildReportThreeTable() {
+    const costPerPerson = 400000.0;
+    const headers = [
+      'Applicant',
+      'ITS',
+      'MUMIN COMMITMENT: Own amount',
+      'MUMIN COMMITMENT: Qarzan Hasana',
+      'MUMIN COMMITMENT: Total Contribution',
+      'AMIL SAHEB COMMITMENT: Own Amount',
+      'AMIL SAHEB COMMITMENT: Qarzan Amount',
+      'AMIL SAHEB COMMITMENT: Total Mumin Contribution',
+      'Total Cost',
+      'Benchmark',
+      'Remaining (400,000 - Mumin)',
+      'Readiness',
+    ];
+
+    return _buildAnimatedReveal(
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Report Three Details',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 5),
+
+            const SizedBox(height: 16),
+            if (_reportThreeRows.isEmpty)
+              const Text('No Form 4 data available.')
+            else
+              RawScrollbar(
+                controller: _reportThreeTableScrollController,
+                thumbVisibility: true,
+                trackVisibility: true,
+                interactive: true,
+                scrollbarOrientation: ScrollbarOrientation.bottom,
+                thickness: 12,
+                minThumbLength: 48,
+                child: ScrollConfiguration(
+                  behavior: _horizontalScrollBehavior(context),
+                  child: SingleChildScrollView(
+                    controller: _reportThreeTableScrollController,
+                    scrollDirection: Axis.horizontal,
+                    physics: const ClampingScrollPhysics(),
+                    child: DataTable(
+                      sortColumnIndex: _reportThreeSortColumnIndex,
+                      sortAscending: _reportThreeSortAscending,
+                      headingRowColor: WidgetStatePropertyAll(
+                        const Color(0xFFF1F5F9),
+                      ),
+                      columns: [
+                        for (var index = 0; index < headers.length; index++)
+                          DataColumn(
+                            label: Text(headers[index]),
+                            onSort: _onSortReportThree,
+                          ),
+                      ],
+                      rows: [
+                        for (
+                          var index = 0;
+                          index < _sortedReportThreeRows.length;
+                          index++
+                        )
+                          DataRow(
+                            color: WidgetStatePropertyAll(
+                              index.isEven
+                                  ? Colors.white
+                                  : const Color(0xFFFAFAFA),
+                            ),
+                            cells: [
+                              DataCell(
+                                Text(_sortedReportThreeRows[index].name),
+                              ),
+                              DataCell(Text(_sortedReportThreeRows[index].its)),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    _sortedReportThreeRows[index]
+                                        .financeOwnContribution,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    _sortedReportThreeRows[index]
+                                        .financeQarzanHasana,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    _sortedReportThreeRows[index]
+                                        .financeTotalContribution,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    _sortedReportThreeRows[index].amilOwnAmount,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    _sortedReportThreeRows[index]
+                                        .amilQarzanAmount,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    _sortedReportThreeRows[index]
+                                        .amilTotalContribution,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    _sortedReportThreeRows[index].totalCost,
+                                  ),
+                                ),
+                              ),
+                              DataCell(Text(formatPkrAmount(400000))),
+                              DataCell(
+                                Text(
+                                  _formatReportMoney(
+                                    costPerPerson -
+                                        _sortedReportThreeRows[index]
+                                            .amilTotalContribution,
+                                  ),
+                                ),
+                              ),
+                              DataCell(
+                                _buildStatusCell(
+                                  '${_sortedReportThreeRows[index].readinessPercentage}%',
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      const Duration(milliseconds: 800),
+    );
+  }
+
+  Widget _buildCommitmentMetric({
+    required String title,
+    required String value,
+    required String caption,
+    required Color color,
+    required IconData icon,
+    required double width,
+    required int delay,
+  }) {
+    return _buildAnimatedReveal(
+      Container(
+        width: width,
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.35)),
+          boxShadow: [
+            BoxShadow(
+              color: color.withValues(alpha: 0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              style: TextStyle(color: color, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 5),
+            Text(
+              caption,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+      Duration(milliseconds: delay),
+    );
+  }
+
+  Widget _buildCommitmentSection({
+    required String title,
+    required Color color,
+    required List<Widget> children,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 14),
+          Wrap(spacing: 28, runSpacing: 14, children: children),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommitmentValue(String label, double value) {
+    return SizedBox(
+      width: 210,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _formatReportMoney(value),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatReportMoney(double value, {int decimals = 2}) {
+    if (decimals == 0) return formatPkrAmount(value);
+    final rounded = value.roundToDouble();
+    if (value == rounded) return formatPkrAmount(value);
+    final formatter = NumberFormat('#,##0.##', 'en_US');
+    return 'PKR ${formatter.format(value)}';
   }
 
   Widget _buildReadinessReport() {
@@ -781,12 +1443,23 @@ class _ReportViewState extends State<ReportView> {
                   scrollDirection: Axis.horizontal,
                   physics: const ClampingScrollPhysics(),
                   child: DataTable(
-                    columns: const [
-                      DataColumn(label: Text('Building Name')),
-                      DataColumn(label: Text('Profiles')),
-                      DataColumn(label: Text('Readiness')),
+                    sortColumnIndex: _reportTwoSortColumnIndex,
+                    sortAscending: _reportTwoSortAscending,
+                    columns: [
+                      DataColumn(
+                        label: const Text('Building Name'),
+                        onSort: _onSortReportTwo,
+                      ),
+                      DataColumn(
+                        label: const Text('Profiles'),
+                        onSort: _onSortReportTwo,
+                      ),
+                      DataColumn(
+                        label: const Text('Readiness'),
+                        onSort: _onSortReportTwo,
+                      ),
                     ],
-                    rows: buildings
+                    rows: _sortedReadinessRows
                         .map(
                           (row) => DataRow(
                             selected: row.buildingName == _selectedBuilding,
@@ -856,17 +1529,43 @@ class _ReportViewState extends State<ReportView> {
                       scrollDirection: Axis.horizontal,
                       physics: const ClampingScrollPhysics(),
                       child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('Name')),
-                          DataColumn(label: Text('ITS')),
-                          DataColumn(label: Text('SF No.')),
-                          DataColumn(label: Text('Willing to Solar')),
-                          DataColumn(label: Text('Landlord Approval')),
-                          DataColumn(label: Text('Final Expectation')),
-                          DataColumn(label: Text('Roof Ready')),
-                          DataColumn(label: Text('Readiness')),
+                        sortColumnIndex: _reportTwoApplicantSortColumnIndex,
+                        sortAscending: _reportTwoApplicantSortAscending,
+                        columns: [
+                          DataColumn(
+                            label: const Text('Name'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
+                          DataColumn(
+                            label: const Text('ITS'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
+                          DataColumn(
+                            label: const Text('SF No.'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
+                          DataColumn(
+                            label: const Text('Willing to Solar'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
+                          DataColumn(
+                            label: const Text('Landlord Approval'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
+                          DataColumn(
+                            label: const Text('Final Expectation'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
+                          DataColumn(
+                            label: const Text('Roof Ready'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
+                          DataColumn(
+                            label: const Text('Readiness'),
+                            onSort: _onSortReportTwoApplicants,
+                          ),
                         ],
-                        rows: selectedRows
+                        rows: _sortReportTwoApplicants(selectedRows)
                             .map(
                               (row) => DataRow(
                                 cells: [
@@ -877,7 +1576,9 @@ class _ReportViewState extends State<ReportView> {
                                     _buildStatusCell(row.willingToSolar),
                                   ),
                                   DataCell(
-                                    _buildStatusCell(row.landlordApproval),
+                                    _buildStatusCell(
+                                      row.reversedLandlordApproval,
+                                    ),
                                   ),
                                   DataCell(
                                     _buildStatusCell(row.finalExpectation),
@@ -1002,10 +1703,11 @@ class _ReportViewState extends State<ReportView> {
   Widget _buildBuildingGrid(List<_BuildingReadinessRow> buildings) {
     if (buildings.isEmpty) return const SizedBox.shrink();
     final buildingQuery = _buildingSearchController.text.trim().toLowerCase();
+
     final visibleBuildings = buildings
         .where(
           (building) =>
-              building.buildingName.toLowerCase().contains(buildingQuery),
+              building.buildingName.toLowerCase().startsWith(buildingQuery),
         )
         .toList();
 
