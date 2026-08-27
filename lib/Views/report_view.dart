@@ -995,6 +995,21 @@ class _ReportViewState extends State<ReportView> {
     final ownContributors = _reportThreeRows
         .where((row) => row.financeOwnContribution > 0)
         .length;
+    final amilOwnContributors = _reportThreeRows
+        .where((row) => row.amilOwnAmount > 0)
+        .length;
+    final qarzanContributors = _reportThreeRows
+        .where((row) => row.financeQarzanHasana > 0)
+        .length;
+    final totalContributors = _reportThreeRows
+        .where((row) => row.financeTotalContribution > 0)
+        .length;
+    final amilQarzanContributors = _reportThreeRows
+        .where((row) => row.amilQarzanAmount > 0)
+        .length;
+    final amilTotalContributors = _reportThreeRows
+        .where((row) => row.amilTotalContribution > 0)
+        .length;
     final ownContributionRatio = requiredBudget == 0
         ? 0.0
         : (financeOwn / requiredBudget).clamp(0.0, 1.0);
@@ -1033,14 +1048,14 @@ class _ReportViewState extends State<ReportView> {
                 Icons.account_balance_wallet_outlined,
               ),
               (
-                'Finance Total Cost',
+                'Material Cost',
                 _formatReportMoney(totalCost),
                 'From finance form',
                 const Color(0xFFEA580C),
                 Icons.receipt_long_outlined,
               ),
               (
-                'Remaining Budget',
+                'Shortfall',
                 _formatReportMoney(remaining),
                 '${formatPkrAmount(400000)} less Mumin contribution',
                 const Color(0xFFDB2777),
@@ -1074,12 +1089,24 @@ class _ReportViewState extends State<ReportView> {
         ),
         const SizedBox(height: 20),
         _buildCommitmentSection(
-          title: 'MUMIN COMMITMENT',
+          title: 'MUMIN SELF COMMITMENT',
           color: const Color(0xFF0E7490),
           children: [
-            _buildCommitmentValue('Own amount', financeOwn),
-            _buildCommitmentValue('Qarzan Hasana', financeQarzan),
-            _buildCommitmentValue('Total Contribution', financeTotal),
+            _buildCommitmentValue(
+              'Own amount',
+              financeOwn,
+              contributorCount: ownContributors,
+            ),
+            _buildCommitmentValue(
+              'Qarzan Hasana',
+              financeQarzan,
+              contributorCount: qarzanContributors,
+            ),
+            _buildCommitmentValue(
+              'Total Contribution',
+              financeTotal,
+              contributorCount: totalContributors,
+            ),
           ],
         ),
         const SizedBox(height: 14),
@@ -1087,9 +1114,21 @@ class _ReportViewState extends State<ReportView> {
           title: 'AMIL SAHEB COMMITMENT',
           color: const Color(0xFF9333EA),
           children: [
-            _buildCommitmentValue('Own amount', amilOwn),
-            _buildCommitmentValue('Qarzan amount', amilQarzan),
-            _buildCommitmentValue('Total Mumin contribution', amilTotal),
+            _buildCommitmentValue(
+              'Own amount',
+              amilOwn,
+              contributorCount: amilOwnContributors,
+            ),
+            _buildCommitmentValue(
+              'Qarzan amount',
+              amilQarzan,
+              contributorCount: amilQarzanContributors,
+            ),
+            _buildCommitmentValue(
+              'Total Mumin contribution',
+              amilTotal,
+              contributorCount: amilTotalContributors,
+            ),
           ],
         ),
         const SizedBox(height: 20),
@@ -1105,15 +1144,15 @@ class _ReportViewState extends State<ReportView> {
     const headers = [
       'Applicant',
       'ITS',
-      'MUMIN COMMITMENT: Own amount',
-      'MUMIN COMMITMENT: Qarzan Hasana',
-      'MUMIN COMMITMENT: Total Contribution',
-      'AMIL SAHEB COMMITMENT: Own Amount',
-      'AMIL SAHEB COMMITMENT: Qarzan Amount',
-      'AMIL SAHEB COMMITMENT: Total Mumin Contribution',
-      'Total Cost',
+      'MUMIN - Own',
+      'MUMIN - Qarzan',
+      'MUMIN - Total',
+      'ASB - Own',
+      'ASB - Qarzan',
+      'ASB - Total',
+      'Material Cost',
       'Benchmark',
-      'Remaining (400,000 - Mumin)',
+      'Shortfall',
       'Readiness',
     ];
 
@@ -1344,7 +1383,11 @@ class _ReportViewState extends State<ReportView> {
     );
   }
 
-  Widget _buildCommitmentValue(String label, double value) {
+  Widget _buildCommitmentValue(
+    String label,
+    double value, {
+    int? contributorCount,
+  }) {
     return SizedBox(
       width: 210,
       child: Column(
@@ -1354,6 +1397,13 @@ class _ReportViewState extends State<ReportView> {
             label,
             style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
           ),
+          if (contributorCount != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              '$contributorCount people contributing',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+            ),
+          ],
           const SizedBox(height: 4),
           Text(
             _formatReportMoney(value),
