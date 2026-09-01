@@ -168,6 +168,7 @@ class _ReadinessLegend extends StatelessWidget {
 class _ReportViewState extends State<ReportView> {
   final _searchController = TextEditingController();
   final _buildingSearchController = TextEditingController();
+  final _reportThreeSearchController = TextEditingController();
   final _reportOneScrollController = ScrollController();
   final _buildingTableScrollController = ScrollController();
   final _applicantTableScrollController = ScrollController();
@@ -198,6 +199,7 @@ class _ReportViewState extends State<ReportView> {
     super.initState();
     _searchController.addListener(_refreshTable);
     _buildingSearchController.addListener(_refreshTable);
+    _reportThreeSearchController.addListener(_refreshTable);
   }
 
   @override
@@ -218,6 +220,9 @@ class _ReportViewState extends State<ReportView> {
       ..removeListener(_refreshTable)
       ..dispose();
     _buildingSearchController
+      ..removeListener(_refreshTable)
+      ..dispose();
+    _reportThreeSearchController
       ..removeListener(_refreshTable)
       ..dispose();
     _reportOneScrollController.dispose();
@@ -564,6 +569,29 @@ class _ReportViewState extends State<ReportView> {
       return _reportThreeSortAscending ? comparison : -comparison;
     });
     return rows;
+  }
+
+  List<_ReportThreeRow> get _visibleReportThreeRows {
+    final rows = List<_ReportThreeRow>.from(_sortedReportThreeRows);
+    final query = _reportThreeSearchController.text.trim().toLowerCase();
+    if (query.isEmpty) return rows;
+
+    return rows.where((row) {
+      final haystack = [
+        row.name,
+        row.its,
+        row.financeOwnContribution.toString(),
+        row.financeQarzanHasana.toString(),
+        row.financeTotalContribution.toString(),
+        row.amilOwnAmount.toString(),
+        row.amilQarzanAmount.toString(),
+        row.amilTotalContribution.toString(),
+        row.totalCost.toString(),
+        row.readinessPercentage.toString(),
+      ].join(' ').toLowerCase();
+
+      return haystack.contains(query);
+    }).toList();
   }
 
   void _refreshTable() => setState(() {});
@@ -1172,11 +1200,27 @@ class _ReportViewState extends State<ReportView> {
               'Report Three Details',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 5),
-
+            const SizedBox(height: 12),
+            TextField(
+              controller: _reportThreeSearchController,
+              decoration: InputDecoration(
+                labelText: 'Search report 3 rows',
+                hintText: 'Name, ITS, amount, readiness...',
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _reportThreeSearchController.text.isEmpty
+                    ? null
+                    : IconButton(
+                        onPressed: _reportThreeSearchController.clear,
+                        icon: const Icon(Icons.clear),
+                      ),
+                border: const OutlineInputBorder(),
+              ),
+            ),
             const SizedBox(height: 16),
             if (_reportThreeRows.isEmpty)
               const Text('No Form 4 data available.')
+            else if (_visibleReportThreeRows.isEmpty)
+              const Text('No matching rows found for your search.')
             else
               RawScrollbar(
                 controller: _reportThreeTableScrollController,
@@ -1208,7 +1252,7 @@ class _ReportViewState extends State<ReportView> {
                       rows: [
                         for (
                           var index = 0;
-                          index < _sortedReportThreeRows.length;
+                          index < _visibleReportThreeRows.length;
                           index++
                         )
                           DataRow(
@@ -1219,13 +1263,15 @@ class _ReportViewState extends State<ReportView> {
                             ),
                             cells: [
                               DataCell(
-                                Text(_sortedReportThreeRows[index].name),
+                                Text(_visibleReportThreeRows[index].name),
                               ),
-                              DataCell(Text(_sortedReportThreeRows[index].its)),
+                              DataCell(
+                                Text(_visibleReportThreeRows[index].its),
+                              ),
                               DataCell(
                                 Text(
                                   _formatReportMoney(
-                                    _sortedReportThreeRows[index]
+                                    _visibleReportThreeRows[index]
                                         .financeOwnContribution,
                                   ),
                                 ),
@@ -1233,7 +1279,7 @@ class _ReportViewState extends State<ReportView> {
                               DataCell(
                                 Text(
                                   _formatReportMoney(
-                                    _sortedReportThreeRows[index]
+                                    _visibleReportThreeRows[index]
                                         .financeQarzanHasana,
                                   ),
                                 ),
@@ -1241,7 +1287,7 @@ class _ReportViewState extends State<ReportView> {
                               DataCell(
                                 Text(
                                   _formatReportMoney(
-                                    _sortedReportThreeRows[index]
+                                    _visibleReportThreeRows[index]
                                         .financeTotalContribution,
                                   ),
                                 ),
@@ -1249,14 +1295,15 @@ class _ReportViewState extends State<ReportView> {
                               DataCell(
                                 Text(
                                   _formatReportMoney(
-                                    _sortedReportThreeRows[index].amilOwnAmount,
+                                    _visibleReportThreeRows[index]
+                                        .amilOwnAmount,
                                   ),
                                 ),
                               ),
                               DataCell(
                                 Text(
                                   _formatReportMoney(
-                                    _sortedReportThreeRows[index]
+                                    _visibleReportThreeRows[index]
                                         .amilQarzanAmount,
                                   ),
                                 ),
@@ -1264,7 +1311,7 @@ class _ReportViewState extends State<ReportView> {
                               DataCell(
                                 Text(
                                   _formatReportMoney(
-                                    _sortedReportThreeRows[index]
+                                    _visibleReportThreeRows[index]
                                         .amilTotalContribution,
                                   ),
                                 ),
@@ -1272,7 +1319,7 @@ class _ReportViewState extends State<ReportView> {
                               DataCell(
                                 Text(
                                   _formatReportMoney(
-                                    _sortedReportThreeRows[index].totalCost,
+                                    _visibleReportThreeRows[index].totalCost,
                                   ),
                                 ),
                               ),
@@ -1281,14 +1328,14 @@ class _ReportViewState extends State<ReportView> {
                                 Text(
                                   _formatReportMoney(
                                     costPerPerson -
-                                        _sortedReportThreeRows[index]
+                                        _visibleReportThreeRows[index]
                                             .amilTotalContribution,
                                   ),
                                 ),
                               ),
                               DataCell(
                                 _buildStatusCell(
-                                  '${_sortedReportThreeRows[index].readinessPercentage}%',
+                                  '${_visibleReportThreeRows[index].readinessPercentage}%',
                                 ),
                               ),
                             ],
