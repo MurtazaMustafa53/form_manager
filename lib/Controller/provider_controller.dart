@@ -74,7 +74,7 @@ class AppProvider extends ChangeNotifier {
       role = UserRole.admin;
     } else if (cleanEmail == 'finance@ibm.com' && password == 'finance123') {
       role = UserRole.finance;
-    } else if (cleanEmail == 'viewer@ibm.com' && password == 'viewer123') {
+    } else if (cleanEmail == 'view@ibm.com' && password == 'Ibm53') {
       role = UserRole.viewer;
     }
 
